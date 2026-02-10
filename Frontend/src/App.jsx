@@ -19,8 +19,12 @@ import PathwaySimulator from './pages/PathwaySimulator';
 import BlockchainAudit from './pages/BlockchainAudit';
 import PatientProfile from './pages/PatientProfile';
 import ClinicalBaselineDemo from './pages/ClinicalBaselineDemo';
+import AdminDashboard from './pages/AdminDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+import RoleBasedRoute from './components/RoleBasedRoute';
 
 // Create a global theme instance
+// ... (theme definition remains same)
 const theme = createTheme({
   typography: {
     fontFamily: '"Space Grotesk", sans-serif', // Default for body/human text
@@ -66,23 +70,42 @@ function App() {
         <Box sx={{ pt: { xs: 8, md: 10 }, minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
           <Box component="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
             <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/tumor-3d" element={<Tumor3DPage />} />
-            <Route path="/patients" element={<PatientIntake />} />
-            <Route path="/genomic-analysis" element={<GenomicAnalysis />} />
-            <Route path="/mri-analysis" element={<MRIAnalysis />} />
-            <Route path="/histopathology" element={<Histopathology />} />
-            <Route path="/treatment-plan" element={<TreatmentPlan />} />
-            <Route path="/outcome-prediction" element={<OutcomePrediction />} />
-            <Route path="/pathway-simulator" element={<PathwaySimulator />} />
-            <Route path="/blockchain-audit" element={<BlockchainAudit />} />
-            <Route path="/patient-profile" element={<PatientProfile />} />
-            <Route path="/baseline-demo" element={<ClinicalBaselineDemo />} />
-          </Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+
+              {/* Protected Routes (All Roles) */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/patient-profile" element={<ProtectedRoute><PatientProfile /></ProtectedRoute>} />
+              
+              {/* Admin Only */}
+              <Route path="/admin" element={
+                <RoleBasedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </RoleBasedRoute>
+              } />
+
+              {/* Clinical/Research Routes (Oncologist, Admin, Researcher) */}
+              <Route path="/tumor-3d" element={<ProtectedRoute><Tumor3DPage /></ProtectedRoute>} />
+              <Route path="/genomic-analysis" element={<ProtectedRoute><GenomicAnalysis /></ProtectedRoute>} />
+              <Route path="/mri-analysis" element={<ProtectedRoute><MRIAnalysis /></ProtectedRoute>} />
+              <Route path="/histopathology" element={<ProtectedRoute><Histopathology /></ProtectedRoute>} />
+              <Route path="/treatment-plan" element={<ProtectedRoute><TreatmentPlan /></ProtectedRoute>} />
+              <Route path="/outcome-prediction" element={<ProtectedRoute><OutcomePrediction /></ProtectedRoute>} />
+              
+              {/* Restricted Write Routes (Oncologist, Admin) */}
+              <Route path="/patients" element={
+                <RoleBasedRoute allowedRoles={['oncologist', 'admin']}>
+                  <PatientIntake />
+                </RoleBasedRoute>
+              } />
+              
+              <Route path="/pathway-simulator" element={<ProtectedRoute><PathwaySimulator /></ProtectedRoute>} />
+              <Route path="/blockchain-audit" element={<ProtectedRoute><BlockchainAudit /></ProtectedRoute>} />
+              <Route path="/baseline-demo" element={<ProtectedRoute><ClinicalBaselineDemo /></ProtectedRoute>} />
+            </Routes>
           </Box>
         </Box>
         <GlobalFooter />

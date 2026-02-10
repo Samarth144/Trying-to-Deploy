@@ -11,6 +11,23 @@ const { generateMockAnalysis, simulateProcessing } = require('../utils/aiSimulat
 // @access  Private
 exports.getPatientAnalyses = async (req, res) => {
     try {
+        const patient = await Patient.findByPk(req.params.patientId);
+
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view analyses for this patient'
+            });
+        }
+
         const analyses = await Analysis.findAll({
             where: { patientId: req.params.patientId },
             include: [{
@@ -43,7 +60,7 @@ exports.getAnalysis = async (req, res) => {
             include: [
                 {
                     model: Patient,
-                    attributes: ['firstName', 'lastName', 'mrn']
+                    attributes: ['firstName', 'lastName', 'mrn', 'userId']
                 },
                 {
                     model: User,
@@ -57,6 +74,14 @@ exports.getAnalysis = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Analysis not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && analysis.Patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view this analysis'
             });
         }
 

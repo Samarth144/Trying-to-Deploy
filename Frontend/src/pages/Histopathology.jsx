@@ -166,11 +166,31 @@ function Histopathology() {
     }
   }, [location.search]);
 
-  const fetchAndAnalyzeReport = async (pid) => {
+  const fetchAndAnalyzeReport = async (pid, forceRefresh = false) => {
       setUploading(true);
       try {
           const token = localStorage.getItem('token');
-          const response = await axios.post(`http://localhost:8000/api/patients/${pid}/analyze-pathology`, {}, {
+          
+          if (!forceRefresh) {
+            // 1. First fetch the patient to check if they already have analysis data
+            const patientRes = await axios.get(`http://localhost:8000/api/patients/${pid}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (patientRes.data.success) {
+                const p = patientRes.data.data;
+                // If analysis already exists, use it and don't re-run
+                if (p.pathologyAnalysis && Object.keys(p.pathologyAnalysis).length > 0) {
+                    console.log("Using existing pathology analysis from database.");
+                    setAnalysisResult(p.pathologyAnalysis);
+                    setUploading(false);
+                    return;
+                }
+            }
+          }
+
+          // 2. If no analysis or forceRefresh, then run the engine
+          const response = await axios.post(`http://localhost:8000/api/patients/${pid}/analyze-pathology`, { forceRefresh }, {
               headers: { Authorization: `Bearer ${token}` }
           });
           if (response.data.success) {
@@ -220,6 +240,17 @@ function Histopathology() {
               <h1 className="histo-title">HISTOPATHOLOGY REPORT ANALYSIS</h1>
               <ConnectionBadge patientId={patientId} />
             </div>
+            {analysisResult && (
+              <Button 
+                variant="outlined" 
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => fetchAndAnalyzeReport(patientId, true)}
+                disabled={uploading}
+                sx={{ color: '#00F0FF', borderColor: 'rgba(0, 240, 255, 0.3)', fontFamily: 'Rajdhani', fontWeight: 700 }}
+              >
+                {uploading ? 'ANALYZING...' : 'RE-RUN AI EXTRACTION'}
+              </Button>
+            )}
           </div>
 
           {patientId && !analysisResult && (

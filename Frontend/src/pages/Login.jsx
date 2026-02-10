@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link } from '@mui/material';
+import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
@@ -8,9 +8,11 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import BoltIcon from '@mui/icons-material/Bolt';
+import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 // --- CUSTOM INPUT COMPONENT ---
+// ... (rest of TechInput component remains same)
 const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, autoComplete, value, onChange }) => {
   const [focused, setFocused] = useState(false);
 
@@ -92,15 +94,25 @@ const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, auto
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login, error, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // For now, simulate login and navigate to dashboard
-    console.log('Login attempt:', { email, password });
-    navigate('/dashboard');
+    setLocalError('');
+    
+    if (!email || !password) {
+      setLocalError('Please enter both email and password');
+      return;
+    }
+
+    const result = await login(email, password);
+    if (result.success) {
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -137,6 +149,12 @@ const LoginPage = () => {
             </Typography>
           </Box>
 
+          {(error || localError) && (
+            <Alert severity="error" sx={{ mb: 3, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              {localError || error}
+            </Alert>
+          )}
+
           {/* --- FORM --- */}
           <Box component="form" onSubmit={handleLogin}>
             <TechInput 
@@ -169,14 +187,16 @@ const LoginPage = () => {
               variant="contained"
               size="large"
               type="submit"
+              disabled={loading}
               className="btn-connect"
             >
               <div className="btn-connect-content">
-                <BoltIcon /> Sign In
+                {loading ? <CircularProgress size={24} color="inherit" /> : <><BoltIcon /> Sign In</>}
               </div>
             </Button>
             
           </Box>
+
 
           {/* --- FOOTER --- */}
           <Box className="login-footer">

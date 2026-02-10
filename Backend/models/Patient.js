@@ -96,10 +96,20 @@ const Patient = sequelize.define('Patient', {
     pathologyAnalysis: {
         type: DataTypes.JSONB,
         defaultValue: {}
+    },
+    userId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
     }
 });
 
 // Associations
+Patient.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+User.hasOne(Patient, { foreignKey: 'userId' });
 Patient.belongsTo(User, { as: 'oncologist', foreignKey: 'oncologistId' });
 User.hasMany(Patient, { foreignKey: 'oncologistId' });
 

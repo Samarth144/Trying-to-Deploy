@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { 
-  Box, Typography
+  Box, Typography, Button
 } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import './TreatmentPlan.css';
 import {
@@ -37,6 +39,7 @@ ChartJS.register(
 function TreatmentPlan() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isPatient } = useAuth();
   const [loading, setLoading] = useState(false);
   const [treatmentData, setTreatmentData] = useState(null);
   const [evidence, setEvidence] = useState([]);
@@ -81,13 +84,26 @@ function TreatmentPlan() {
     }));
   };
 
-  const generateTreatmentPlan = async (e, overrideData = null) => {
+  const generateTreatmentPlan = async (e, overrideData = null, forceRefresh = false) => {
     if (e) e.preventDefault();
-    const fullPatientData = overrideData || { cancer_type: cancerType.toLowerCase(), ...patientData };
+    
+    // Get patientId from URL for payload
+    const params = new URLSearchParams(location.search);
+    const pid = params.get('patientId');
+
+    const fullPatientData = overrideData || { 
+        cancer_type: cancerType.toLowerCase(), 
+        patientId: pid,
+        forceRefresh,
+        ...patientData 
+    };
     
     setLoading(true);
-    setTreatmentData(null);
-    setEvidence([]);
+    // Only clear if we are forcing a refresh or have no data
+    if (forceRefresh || !treatmentData) {
+        setTreatmentData(null);
+        setEvidence([]);
+    }
 
     try {
       const token = localStorage.getItem('token');
@@ -463,7 +479,7 @@ function TreatmentPlan() {
       <div className="fluid-container">
         
         {/* HEADER */}
-        <div className="console-header">
+        <div className="console-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Typography variant="h4" className="page-title">
               AI-RECOMMENDED TREATMENT PLAN
@@ -472,6 +488,17 @@ function TreatmentPlan() {
               Evidence-based protocol optimization using multimodal data integration.
             </Typography>
           </div>
+          {treatmentData && (
+            <Button 
+              variant="outlined" 
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => generateTreatmentPlan(null, null, true)}
+              disabled={loading}
+              sx={{ color: '#00F0FF', borderColor: 'rgba(0, 240, 255, 0.3)', fontFamily: 'Rajdhani', fontWeight: 700 }}
+            >
+              {loading ? 'GENERATING...' : 'RE-GENERATE PLAN'}
+            </Button>
+          )}
         </div>
 
         {/* PARAMS CARD */}
@@ -622,17 +649,19 @@ function TreatmentPlan() {
         </div>
 
         {/* FOOTER */}
-        <div className="action-footer">
-            <button className="btn-tech btn-outline" onClick={() => navigate(-1)}>
-                ← BACK
-            </button>
-            <button className="btn-tech btn-primary-gradient" onClick={() => navigate(`/outcome-prediction${location.search}`)}>
-                VIEW OUTCOME PREDICTIONS →
-            </button>
-            <button className="btn-tech btn-secondary-glass" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
-                SIMULATE PATHWAY
-            </button>
-        </div>
+        {!isPatient && (
+          <div className="action-footer">
+              <button className="btn-tech btn-outline" onClick={() => navigate(-1)}>
+                  ← BACK
+              </button>
+              <button className="btn-tech btn-primary-gradient" onClick={() => navigate(`/outcome-prediction${location.search}`)}>
+                  VIEW OUTCOME PREDICTIONS →
+              </button>
+              <button className="btn-tech btn-secondary-glass" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
+                  SIMULATE PATHWAY
+              </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,9 +21,10 @@ import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturi
 import LayersIcon from '@mui/icons-material/Layers';
 import BiotechIcon from '@mui/icons-material/Biotech';
 import OpacityIcon from '@mui/icons-material/Opacity';
+import { useAuth } from '../context/AuthContext';
 import './Tumor3DPage.css';
 
-// --- THEME CONSTANTS ---
+// ... (Theme and components remain same)
 const colors = {
   bg: '#0B1221',
   teal: '#059789',
@@ -230,6 +231,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
 const Tumor3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isPatient } = useAuth();
   const [layers, setLayers] = useState({ tumor: true, edema: true, brain: true });
   const [realisticView, setRealisticView] = useState(true);
   const [brainOpacity, setBrainOpacity] = useState(0.25);
@@ -337,10 +339,12 @@ const Tumor3DPage = () => {
         </Box>
       </Box>
 
-      <Box sx={{ p: 2, borderTop: `1px solid rgba(255,255,255,0.05)`, display: 'flex', justifyContent: 'space-between', bgcolor: colors.bg }}>
-        <Button onClick={() => navigate(-1)} startIcon={<ArrowBackIcon />} sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', '&:hover': { color: '#fff' } }}>Return to Analysis</Button>
-        <Button onClick={() => navigate(`/genomic-analysis?patientId=${new URLSearchParams(location.search).get('patientId')}`)} endIcon={<ArrowForwardIcon />} variant="contained" sx={{ bgcolor: colors.teal, color: '#fff', fontFamily: '"Rajdhani"', fontWeight: 700, px: 4, '&:hover': { bgcolor: colors.cyan, color: '#000' } }}>PROCEED TO GENOMICS</Button>
-      </Box>
+      {!isPatient && (
+        <Box sx={{ p: 2, borderTop: `1px solid rgba(255,255,255,0.05)`, display: 'flex', justifyContent: 'space-between', bgcolor: colors.bg }}>
+          <Button onClick={() => navigate(-1)} startIcon={<ArrowBackIcon />} sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', '&:hover': { color: '#fff' } }}>Return to Analysis</Button>
+          <Button onClick={() => navigate(`/genomic-analysis?patientId=${new URLSearchParams(location.search).get('patientId')}`)} endIcon={<ArrowForwardIcon />} variant="contained" sx={{ bgcolor: colors.teal, color: '#fff', fontFamily: '"Rajdhani"', fontWeight: 700, px: 4, '&:hover': { bgcolor: colors.cyan, color: '#000' } }}>PROCEED TO GENOMICS</Button>
+        </Box>
+      )}
     </Box>
   );
 };

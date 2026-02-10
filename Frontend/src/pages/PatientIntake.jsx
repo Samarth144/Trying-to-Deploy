@@ -23,6 +23,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
@@ -273,7 +274,7 @@ const PatientIntake = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({ 
-    name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
+    name: '', dob: '', gender: '', mrn: '', contact: '', email: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
     idh1: 'Unknown', mgmt: 'Unknown',
     er: 'Unknown', pr: 'Unknown', her2: 'Unknown', brca: 'Unknown', pdl1: 'Unknown',
@@ -402,9 +403,9 @@ const PatientIntake = () => {
                     </div>
                     <div className="id-details">
                       <div className="id-field"><span>MRN</span><p>{formData.mrn || "---"}</p></div>
+                      <div className="id-field"><span>EMAIL</span><p>{formData.email || "---"}</p></div>
                       <div className="id-field"><span>DOB</span><p>{formData.dob || "--/--/--"}</p></div>
                       <div className="id-field"><span>CONTACT</span><p>{formData.contact || "---"}</p></div>
-                      <div className="id-field"><span>DIAGNOSIS</span><p>{formData.diagnosisDate || "--/--/--"}</p></div>
                     </div>
                   </div>
                 </motion.div>
@@ -429,6 +430,10 @@ const PatientIntake = () => {
                         <TextField fullWidth label="Full Legal Name" variant="outlined" className="tech-input fixed-width"
                           value={formData.name} onChange={(e) => handleChange('name', e.target.value)}
                           InputProps={{ startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon /></InputAdornment> }}
+                        />
+                        <TextField fullWidth label="Patient Email Address" placeholder="Used for patient portal access" className="tech-input fixed-width"
+                          value={formData.email} onChange={(e) => handleChange('email', e.target.value)}
+                          InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlinedIcon /></InputAdornment> }}
                         />
                         <TextField fullWidth label="Medical Record Number (MRN)" placeholder="e.g. MR-2026-X" className="tech-input fixed-width"
                           value={formData.mrn} onChange={(e) => handleChange('mrn', e.target.value)}
@@ -660,6 +665,10 @@ const PatientIntake = () => {
                           <div>
                             <span className="data-label">FULL NAME</span>
                             <Typography className="data-value-lg">{formData.name || '---'}</Typography>
+                          </div>
+                          <div>
+                            <span className="data-label">EMAIL</span>
+                            <Typography className="data-value">{formData.email || '---'}</Typography>
                           </div>
                           <div className="data-row">
                             <div>

@@ -12,6 +12,29 @@ const { generateMockAnalysis } = require('../utils/aiSimulator');
 // @access  Private
 exports.generateFormattedOutcomes = async (req, res) => {
     try {
+        const { patientId } = req.body;
+
+        // 1. Check if a recent prediction exists
+        if (patientId) {
+            const existingOutcome = await OutcomePrediction.findOne({
+                where: { patientId },
+                order: [['createdAt', 'DESC']]
+            });
+
+            if (existingOutcome && !req.body.forceRefresh) {
+                console.log('Returning existing outcome prediction from database.');
+                return res.json({
+                    success: true,
+                    data: {
+                        ...existingOutcome.predictionData,
+                        formattedSideEffects: existingOutcome.sideEffects, // Assuming sideEffects field stores formatted text
+                        confidence: existingOutcome.confidence || 92.0,
+                        isCached: true
+                    }
+                });
+            }
+        }
+
         // Step 1: Call the Python AI engine to get the raw outcome predictions.
         const aiEngineResponse = await axios.post('http://127.0.0.1:5000/predict_side_effects', req.body);
         const rawOutcomeData = aiEngineResponse.data;
@@ -22,22 +45,39 @@ exports.generateFormattedOutcomes = async (req, res) => {
         // Step 2: Format the side effects using the Gemini API formatter.
         const formattedSideEffects = await formatSideEffectsWithGemini(sideEffects, req.body);
 
+        const finalResult = {
+            ...restOfOutcomeData,
+            sideEffects: sideEffects, 
+            formattedSideEffects: formattedSideEffects,
+            confidence: rawOutcomeData.confidence || 92.0,
+            riskStratification: rawOutcomeData.riskStratification || { low: 25, moderate: 45, high: 30 },
+            prognosticFactors: rawOutcomeData.prognosticFactors || { "Age": 65, "KPS": 85, "Biomarkers": 90 },
+            timelineProjection: rawOutcomeData.timelineProjection || {
+                "months": ["Baseline", "3 mo", "6 mo", "12 mo", "18 mo", "24 mo"],
+                "response_indicator": [100, 40, 35, 45, 55, 65],
+                "quality_of_life": [75, 70, 73, 67, 63, 60]
+            }
+        };
+
+        // 3. Save to DB
+        if (patientId) {
+            await OutcomePrediction.create({
+                patientId,
+                overallSurvival: finalResult.overallSurvival,
+                progressionFreeSurvival: finalResult.progressionFreeSurvival,
+                sideEffects: formattedSideEffects,
+                qualityOfLife: finalResult.qualityOfLife,
+                predictionData: finalResult,
+                generatedById: req.user.id,
+                confidence: finalResult.confidence
+            });
+            console.log('New outcome prediction saved to database.');
+        }
+
         // Step 3: Send the raw outcome data and the formatted side effects back to the frontend.
         res.json({
             success: true,
-            data: {
-                ...restOfOutcomeData,
-                sideEffects: sideEffects, // keep the raw data as well
-                formattedSideEffects: formattedSideEffects,
-                confidence: rawOutcomeData.confidence || 92.0,
-                riskStratification: rawOutcomeData.riskStratification || { low: 25, moderate: 45, high: 30 },
-                prognosticFactors: rawOutcomeData.prognosticFactors || { "Age": 65, "KPS": 85, "Biomarkers": 90 },
-                timelineProjection: rawOutcomeData.timelineProjection || {
-                    "months": ["Baseline", "3 mo", "6 mo", "12 mo", "18 mo", "24 mo"],
-                    "response_indicator": [100, 40, 35, 45, 55, 65],
-                    "quality_of_life": [75, 70, 73, 67, 63, 60]
-                }
-            }
+            data: finalResult
         });
 
     } catch (error) {
@@ -67,6 +107,23 @@ exports.generateFormattedOutcomes = async (req, res) => {
 // @access  Private
 exports.getPatientOutcomes = async (req, res) => {
     try {
+        const patient = await Patient.findByPk(req.params.patientId);
+
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view outcomes for this patient'
+            });
+        }
+
         const outcomes = await OutcomePrediction.findAll({
             where: { patientId: req.params.patientId },
             include: [
@@ -96,7 +153,7 @@ exports.getOutcome = async (req, res) => {
     try {
         const outcome = await OutcomePrediction.findByPk(req.params.id, {
             include: [
-                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] },
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn', 'userId'] },
                 { model: TreatmentPlan, attributes: ['recommendedProtocol'] },
                 { model: User, as: 'generatedBy', attributes: ['name', 'email'] }
             ]
@@ -106,6 +163,14 @@ exports.getOutcome = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Outcome prediction not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && outcome.Patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view this outcome prediction'
             });
         }
 

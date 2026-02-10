@@ -30,6 +30,13 @@ const OutcomePrediction = sequelize.define('OutcomePrediction', {
     },
     inputFeatures: {
         type: DataTypes.JSONB
+    },
+    predictionData: {
+        type: DataTypes.JSONB
+    },
+    confidence: {
+        type: DataTypes.FLOAT,
+        defaultValue: 92.0
     }
 });
 

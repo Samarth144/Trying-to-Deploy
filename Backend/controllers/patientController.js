@@ -79,11 +79,25 @@ exports.analyzePathology = async (req, res) => {
 // @access  Private
 exports.getPatients = async (req, res) => {
     try {
+        // Only oncologist, admin, and researcher can list patients
+        if (req.user.role === 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Patients are not authorized to list all patients'
+            });
+        }
+
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
+        const where = {};
+        // If oncologist, they might only want to see their own patients
+        // For now, let's allow them to see all, but we could filter by oncologistId
+        // if (req.user.role === 'oncologist') where.oncologistId = req.user.id;
+
         const { count, rows: patients } = await Patient.findAndCountAll({
+            where,
             include: [{
                 model: User,
                 as: 'oncologist',
@@ -130,6 +144,14 @@ exports.getPatient = async (req, res) => {
             });
         }
 
+        // Role-based access check
+        if (req.user.role === 'patient' && patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view this patient record'
+            });
+        }
+
         res.json({
             success: true,
             data: patient
@@ -148,38 +170,51 @@ exports.getPatient = async (req, res) => {
 exports.createPatient = async (req, res) => {
     try {
         const {
-            name, mrn, dob, gender, contact, diagnosisDate, cancerType,
+            name, mrn, dob, gender, contact, email, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths,
+            userId
         } = req.body;
+
+        const trimmedEmail = email ? email.trim() : null;
+
         // 1. Split Name
         const nameParts = name ? name.split(' ') : ['Unknown', ''];
         const firstName = nameParts[0];
         const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Unknown';
 
-        // 2. Format Arrays
+        // ... (formatting logic remains same)
         const symptomsArray = typeof symptoms === 'string' ? symptoms.split(',').filter(s => s.trim()) : [];
         const comorbiditiesArray = typeof comorbidities === 'string' ? comorbidities.split(',').filter(s => s.trim()) : [];
 
-        // 3. Construct Genomic Profile
         const genomicProfile = {
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp
         };
 
-        // Remove undefined/null keys from genomicProfile
         Object.keys(genomicProfile).forEach(key => 
             (genomicProfile[key] === undefined || genomicProfile[key] === null) && delete genomicProfile[key]
         );
 
-        // 4. Create Patient Record
+        // 2. Automatic User Linking
+        // If an email is provided but no userId, try to find a user with that email
+        let finalUserId = userId;
+        if (!finalUserId && trimmedEmail) {
+            const userWithEmail = await User.findOne({ where: { email: trimmedEmail } });
+            if (userWithEmail) {
+                finalUserId = userWithEmail.id;
+            }
+        }
+
+        // 3. Construct Patient Record
         const patientData = {
             firstName,
             lastName,
             mrn,
             dateOfBirth: dob,
             gender: gender ? gender.toLowerCase() : 'other',
+            email: trimmedEmail,
             phone: contact,
-            diagnosis: cancerType || 'Unknown', // Using cancerType as primary diagnosis
+            diagnosis: cancerType || 'Unknown', 
             diagnosisDate,
             cancerType,
             status: 'Pending',
@@ -188,10 +223,11 @@ exports.createPatient = async (req, res) => {
             symptoms: symptomsArray,
             comorbidities: comorbiditiesArray,
             genomicProfile,
-            medicalHistory: pathologyReport, // Storing report text content here
-            pathologyReportPath, // Storing file path here
+            medicalHistory: pathologyReport, 
+            pathologyReportPath, 
             mriPaths,
-            oncologistId: req.user.id
+            oncologistId: req.user.id,
+            userId: finalUserId || null
         };
 
         const patient = await Patient.create(patientData);
@@ -224,13 +260,26 @@ exports.updatePatient = async (req, res) => {
         }
 
         const { 
-            name, mrn, dob, gender, contact, diagnosisDate, cancerType,
+            name, mrn, dob, gender, contact, email, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths,
+            userId
         } = req.body;
 
+        const trimmedEmail = email ? email.trim() : (patient.email ? patient.email.trim() : null);
         const updates = {};
 
+        if (email) updates.email = trimmedEmail;
+        
+        // Automatic User Linking on Update
+        if (userId) {
+            updates.userId = userId;
+        } else if (trimmedEmail && !patient.userId) {
+            const userWithEmail = await User.findOne({ where: { email: trimmedEmail } });
+            if (userWithEmail) {
+                updates.userId = userWithEmail.id;
+            }
+        }
         // 1. Handle Name Split if provided
         if (name) {
             const nameParts = name.split(' ');

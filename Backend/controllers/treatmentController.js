@@ -11,18 +11,45 @@ const { generateMockAnalysis } = require('../utils/aiSimulator');
 // @access  Private
 exports.generateFormattedPlan = async (req, res) => {
     console.log('--- Initiating generateFormattedPlan ---');
-    console.log('Request Body:', JSON.stringify(req.body, null, 2));
-
+    
     try {
+        const { patientId, cancer_type } = req.body;
+
+        // 1. Check if a recent plan exists for this patient
+        if (patientId) {
+            const existingPlan = await TreatmentPlan.findOne({
+                where: { patientId },
+                order: [['createdAt', 'DESC']]
+            });
+
+            // If plan exists and was created in the last 24 hours, return it
+            // (We allow re-generation if user specifically requests it, but for auto-load we use cache)
+            if (existingPlan && !req.body.forceRefresh) {
+                console.log('Returning existing treatment plan from database.');
+                return res.json({
+                    success: true,
+                    confidence: existingPlan.confidence,
+                    protocols: [], // We might not have saved protocol comparison in DB yet
+                    data: {
+                        rawPlan: existingPlan.planData || {
+                            primary_treatment: existingPlan.recommendedProtocol,
+                            clinical_rationale: existingPlan.rationale,
+                            alternatives: existingPlan.alternativeOptions,
+                            safety_alerts: []
+                        },
+                        formattedEvidence: existingPlan.guidelineAlignment
+                    },
+                    isCached: true
+                });
+            }
+        }
+
         // Step 1: Call the Python AI engine to get the raw treatment plan and evidence.
         console.log('Step 1: Calling Python AI engine at http://127.0.0.1:5000/recommend...');
         const aiEngineResponse = await axios.post('http://127.0.0.1:5000/recommend', req.body);
 
         const rawTreatmentData = aiEngineResponse.data;
-        console.log('Step 1a: Successfully received data from AI engine.');
-        // Log only a snippet of the data to avoid flooding the console
-        console.log('Raw Data Snippet:', JSON.stringify(rawTreatmentData).substring(0, 200));
-
+        
         // Extract the raw plan and evidence from the AI engine's response
         const rawPlan = rawTreatmentData.plan || 'No specific plan provided by AI engine.';
         const evidence = rawTreatmentData.evidence || (rawTreatmentData.plan && rawTreatmentData.plan.evidence) || [];
@@ -34,13 +61,25 @@ exports.generateFormattedPlan = async (req, res) => {
         let formattedEvidence = "No specific evidence provided for formatting.";
         if (evidence && evidence.length > 0) {
             formattedEvidence = await formatEvidenceWithGemini(evidence);
-            console.log('Step 2a: Successfully formatted evidence with Gemini.');
-        } else {
-            console.log('Step 2a: No evidence to format.');
+        }
+
+        // 3. Save the generated plan to DB if patientId is provided
+        if (patientId) {
+            await TreatmentPlan.create({
+                patientId,
+                recommendedProtocol: rawPlan.primary_treatment || 'Standard Protocol',
+                confidence: parseFloat(confidence),
+                rationale: rawPlan.clinical_rationale,
+                alternativeOptions: rawPlan.alternatives || [],
+                guidelineAlignment: formattedEvidence, // Store the formatted evidence here
+                planData: rawPlan,
+                createdById: req.user.id,
+                status: 'active'
+            });
+            console.log('New treatment plan saved to database.');
         }
 
         // Step 3: Send the raw plan and formatted evidence back to the frontend.
-        console.log('Step 3: Sending raw plan and formatted evidence to frontend.');
         res.json({
             success: true,
             confidence: confidence,
@@ -50,7 +89,6 @@ exports.generateFormattedPlan = async (req, res) => {
                 formattedEvidence: formattedEvidence
             }
         });
-        console.log('--- generateFormattedPlan Completed Successfully ---');
 
     } catch (error) {
         console.error('--- ERROR in generateFormattedPlan ---');
@@ -89,6 +127,23 @@ exports.generateFormattedPlan = async (req, res) => {
 // @access  Private
 exports.getPatientTreatments = async (req, res) => {
     try {
+        const patient = await Patient.findByPk(req.params.patientId);
+
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view treatment plans for this patient'
+            });
+        }
+
         const treatments = await TreatmentPlan.findAll({
             where: { patientId: req.params.patientId },
             include: [
@@ -118,7 +173,7 @@ exports.getTreatment = async (req, res) => {
     try {
         const treatment = await TreatmentPlan.findByPk(req.params.id, {
             include: [
-                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] },
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn', 'userId'] },
                 { model: User, as: 'createdBy', attributes: ['name', 'email'] },
                 { model: User, as: 'approvedBy', attributes: ['name', 'email'] }
             ]
@@ -128,6 +183,14 @@ exports.getTreatment = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Treatment plan not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && treatment.Patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view this treatment plan'
             });
         }
 

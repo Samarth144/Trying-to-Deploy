@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Patient = require('../models/Patient');
 const generateToken = require('../utils/generateToken');
 
 
@@ -8,9 +9,10 @@ const generateToken = require('../utils/generateToken');
 exports.register = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
+        const trimmedEmail = email ? email.trim() : '';
 
         // Check if user exists
-        const userExists = await User.findOne({ where: { email } });
+        const userExists = await User.findOne({ where: { email: trimmedEmail } });
         if (userExists) {
             return res.status(400).json({
                 success: false,
@@ -21,12 +23,18 @@ exports.register = async (req, res) => {
         // Create user
         const user = await User.create({
             name,
-            email,
+            email: trimmedEmail,
             password,
             role: role || 'oncologist'
         });
 
-
+        // Link existing patient record if this is a patient registration
+        if (user.role === 'patient') {
+            await Patient.update(
+                { userId: user.id },
+                { where: { email: trimmedEmail, userId: null } }
+            );
+        }
 
         res.status(201).json({
             success: true,
@@ -39,6 +47,7 @@ exports.register = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('REGISTRATION ERROR:', error);
         res.status(500).json({
             success: false,
             message: error.message

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import './OutcomePrediction.css';
 import {
   Chart as ChartJS,
@@ -47,6 +48,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 
 const GENOMIC_MARKERS = {
@@ -267,6 +269,7 @@ ChartJS.register(
 function OutcomePrediction() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isPatient } = useAuth();
   const [loading, setLoading] = useState(false);
   const [outcomeData, setOutcomeData] = useState(null);
   const [formattedSideEffects, setFormattedSideEffects] = useState('');
@@ -282,12 +285,19 @@ function OutcomePrediction() {
 
   const handleChange = (field, value) => setFormData({ ...formData, [field]: value });
 
-  const generatePredictions = useCallback(async (customData = null) => {
+  const generatePredictions = useCallback(async (customData = null, forceRefresh = false) => {
     setLoading(true);
-    setFormattedSideEffects('');
+    if (forceRefresh || !outcomeData) {
+        setOutcomeData(null);
+        setFormattedSideEffects('');
+    }
     try {
       const token = localStorage.getItem('token');
-      const payload = customData || formData;
+      
+      const params = new URLSearchParams(location.search);
+      const pid = params.get('patientId');
+
+      const payload = customData || { ...formData, patientId: pid, forceRefresh };
       const response = await axios.post('http://localhost:8000/api/outcomes/predict-formatted', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -530,7 +540,20 @@ function OutcomePrediction() {
               Multimodal AI-powered survival forecasting and toxicity modeling.
             </Typography>
           </div>
-          {loading && <div className="text-secondary" style={{ fontFamily: '"Space Grotesk"' }}>Engine is calculating projections...</div>}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {loading && <div className="text-secondary" style={{ fontFamily: '"Space Grotesk"' }}>Engine is calculating projections...</div>}
+            {outcomeData && !isPatient && (
+              <Button 
+                variant="outlined" 
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => generatePredictions(null, true)}
+                disabled={loading}
+                sx={{ color: '#00F0FF', borderColor: 'rgba(0, 240, 255, 0.3)', fontFamily: 'Rajdhani', fontWeight: 700 }}
+              >
+                {loading ? 'CALCULATING...' : 'RE-CALCULATE OUTCOMES'}
+              </Button>
+            )}
+          </Box>
         </div>
 
         {!outcomeData && !loading && (
@@ -667,17 +690,19 @@ function OutcomePrediction() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-md justify-center">
-          <button className="btn btn-secondary" onClick={() => navigate(`/treatment-plan${location.search}`)}>
-            ← Back to Treatment Plan
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
-            Simulate Treatment Pathway →
-          </button>
-          <button className="btn btn-outline" onClick={downloadReport}>
-            Download Report
-          </button>
-        </div>
+        {!isPatient && (
+          <div className="flex gap-md justify-center">
+            <button className="btn btn-secondary" onClick={() => navigate(`/treatment-plan${location.search}`)}>
+              ← Back to Treatment Plan
+            </button>
+            <button className="btn btn-primary" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
+              Simulate Treatment Pathway →
+            </button>
+            <button className="btn btn-outline" onClick={downloadReport}>
+              Download Report
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

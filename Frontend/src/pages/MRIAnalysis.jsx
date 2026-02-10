@@ -48,7 +48,7 @@ const Viewport = ({ title, color, children }) => (
   </div>
 );
 
-const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPlane, setViewPlane, loading }) => {
+const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPlane, setViewPlane, loading, refreshTrigger }) => {
   const [images, setImages] = useState({ source: null, mask: null, heatmap: null });
   const [imageLoading, setImageLoading] = useState(false); // Local loading state for images
 
@@ -93,7 +93,7 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
       }, 100);
 
       return () => clearTimeout(timeoutId);
-  }, [analysisId, slice, sequence, viewPlane]);
+  }, [analysisId, slice, sequence, viewPlane, refreshTrigger]);
 
   const maxSlices = viewPlane === 'axial' ? 155 : 240;
 
@@ -259,6 +259,7 @@ const MRIAnalysis = () => {
   const [slice, setSlice] = useState(75);
   const [sequence, setSequence] = useState('T1ce');
   const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [patientId, setPatientId] = useState(null);
   const [analysisId, setAnalysisId] = useState(null);
   const [viewPlane, setViewPlane] = useState('axial'); // 'axial', 'sagittal', 'coronal'
@@ -482,6 +483,8 @@ const MRIAnalysis = () => {
         if (processRes.data.success) {
              console.log("Segmentation result:", processRes.data);
              updateMetricsFromData(processRes.data.data.data);
+             setViewPlane('axial'); // Force axial view
+             setRefreshTrigger(prev => prev + 1); // Trigger image load
              showToast("SEGMENTATION MODEL GENERATED SUCCESSFULLY");
         }
 
@@ -571,6 +574,7 @@ const MRIAnalysis = () => {
                   viewPlane={viewPlane}
                   setViewPlane={setViewPlane}
                   loading={loading}
+                  refreshTrigger={refreshTrigger}
                   sequence={sequence} setSequence={setSequence} 
                   slice={slice} setSlice={setSlice} 
                />

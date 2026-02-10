@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Container, Grid, Typography, Button, IconButton, Chip, TablePagination, CircularProgress,
-  TextField, InputAdornment, Menu, MenuItem
+  TextField, InputAdornment, Menu, MenuItem, Card, CardContent, Avatar
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -11,8 +11,13 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import CloseIcon from '@mui/icons-material/Close';
+import { useAuth } from '../context/AuthContext';
+import PersonIcon from '@mui/icons-material/Person';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import DescriptionIcon from '@mui/icons-material/Description';
+import MedicationIcon from '@mui/icons-material/Medication';
 
-// --- THEME CONSTANTS ---
+// ... (colors and StatItem, PatientRow remain the same)
 const colors = {
   bg: '#0B1221',
   glass: 'rgba(22, 32, 50, 0.8)',
@@ -26,10 +31,8 @@ const colors = {
   border: 'rgba(5, 151, 137, 0.3)'
 };
 
-// --- COMPONENTS ---
-
 const StatItem = ({ label, value, unit }) => (
-  <Box sx={{ px: 6, borderRight: `1px solid ${colors.border}`, '&:last-child': { borderRight: 'none' }, flex: 1, minWidth: '200px' }}>
+  <Box sx={{ px: { xs: 2, md: 6 }, borderRight: { xs: 'none', md: `1px solid ${colors.border}` }, '&:last-child': { borderRight: 'none' }, flex: 1, minWidth: '200px', mb: { xs: 2, md: 0 } }}>
     <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', lineHeight: 1 }}>
       {value}
     </Typography>
@@ -130,11 +133,20 @@ const PatientRow = ({ p, index, onClick }) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, isPatient, isDoctor, isAdmin } = useAuth();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  useEffect(() => {
+    if (isAdmin) {
+      navigate('/admin');
+    }
+  }, [isAdmin, navigate]);
+
   const [loading, setLoading] = useState(true);
   const [dbStats, setDbStats] = useState([]);
   const [dbPatients, setDbPatients] = useState([]);
+  const [patientData, setPatientData] = useState(null);
   
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,22 +158,32 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-
-        const statsRes = await axios.get('http://localhost:8000/api/dashboard/stats', config);
+        const statsRes = await axios.get('/dashboard/stats');
         if (statsRes.data.success) {
           const s = statsRes.data.data.overview;
           setDbStats([
-            { label: 'Total Patients', value: String(s.totalPatients).padStart(2, '0'), unit: 'CASES' },
-            { label: 'Active Analyses', value: String(s.totalAnalyses).padStart(2, '0'), unit: 'RUNNING' },
-            { label: 'Avg Confidence', value: `${s.avgConfidence}%`, unit: 'AI SCORE' },
+            { label: isPatient ? 'Records Found' : 'Total Patients', value: String(s.totalPatients).padStart(2, '0'), unit: isPatient ? 'IDENTITY' : 'CASES' },
+            { label: 'Analyses', value: String(s.totalAnalyses).padStart(2, '0'), unit: 'COMPLETED' },
+            { label: isPatient ? 'Active Plans' : 'Avg Confidence', value: isPatient ? String(s.activeTreatments).padStart(2, '0') : `${s.avgConfidence}%`, unit: isPatient ? 'TREATMENT' : 'AI SCORE' },
           ]);
+          
+          if (isPatient && statsRes.data.data.patientId) {
+            const p = statsRes.data.data.patientRecord;
+            setPatientData({ 
+              id: statsRes.data.data.patientId,
+              mrn: p?.mrn,
+              dob: p?.dob,
+              gender: p?.gender,
+              phone: p?.phone
+            });
+          }
         }
 
-        const patientsRes = await axios.get('http://localhost:8000/api/dashboard/recent-patients?limit=100', config);
-        if (patientsRes.data.success) {
-          setDbPatients(patientsRes.data.data);
+        if (!isPatient) {
+          const patientsRes = await axios.get('/dashboard/recent-patients?limit=100');
+          if (patientsRes.data.success) {
+            setDbPatients(patientsRes.data.data);
+          }
         }
       } catch (err) {
         console.error("Dashboard data fetch failed:", err);
@@ -170,7 +192,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
-  }, []);
+  }, [isPatient]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -202,16 +224,178 @@ const Dashboard = () => {
     setPage(0);
   };
 
+  // --- RENDER PATIENT VIEW ---
+  if (isPatient) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
+        <Container maxWidth="xl">
+          <Box sx={{ mb: 6 }}>
+            <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
+              PATIENT HUB
+            </Typography>
+            <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
+              Welcome back, {user?.name}. Monitor your clinical progress and AI analysis results.
+            </Typography>
+          </Box>
+
+          <Box sx={{ 
+            bgcolor: 'rgba(22, 32, 50, 0.6)', 
+            border: `1px solid ${colors.border}`, 
+            borderRadius: '12px', 
+            p: 4, 
+            mb: 6,
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: 4,
+            backdropFilter: 'blur(10px)'
+          }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', px: 3, gap: 2 }}>
+                  <CircularProgress size={20} sx={{ color: colors.teal }} />
+                  <Typography variant="caption" sx={{ color: colors.muted }}>Loading your health metrics...</Typography>
+              </Box>
+            ) : dbStats.map((stat) => (
+              <StatItem key={stat.label} {...stat} />
+            ))}
+          </Box>
+
+          <Grid container spacing={4}>
+            {/* NEW: PERSONAL IDENTITY CARD */}
+            <Grid item xs={12}>
+              <Card sx={{ 
+                bgcolor: 'rgba(5, 151, 137, 0.1)', 
+                border: `1px solid ${colors.teal}`, 
+                borderRadius: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Avatar sx={{ width: 80, height: 80, bgcolor: colors.teal, fontSize: '2rem', fontFamily: 'Rajdhani', fontWeight: 700 }}>
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h4" sx={{ fontFamily: 'Rajdhani', fontWeight: 700, color: '#fff' }}>
+                          {user?.name}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                          <Chip label={`MRN: ${patientData?.mrn || '---'}`} size="small" sx={{ bgcolor: `${colors.cyan}20`, color: colors.cyan, borderRadius: '4px', fontFamily: 'JetBrains Mono' }} />
+                          <Chip label="ACTIVE CASE" size="small" sx={{ bgcolor: `${colors.green}20`, color: colors.green, borderRadius: '4px', fontWeight: 700 }} />
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    <Grid container spacing={4} sx={{ width: { xs: '100%', md: 'auto' }, minWidth: { md: '400px' } }}>
+                      <Grid item xs={6} md={4}>
+                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>DATE OF BIRTH</Typography>
+                        <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.dob ? new Date(patientData.dob).toLocaleDateString() : '---'}</Typography>
+                      </Grid>
+                      <Grid item xs={6} md={4}>
+                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>GENDER</Typography>
+                        <Typography sx={{ color: '#fff', fontWeight: 600, textTransform: 'uppercase' }}>{patientData?.gender || '---'}</Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>CONTACT</Typography>
+                        <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.phone || user?.email}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </CardContent>
+                <Box sx={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.05 }}>
+                  <PersonIcon sx={{ fontSize: 150 }} />
+                </Box>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <AnalyticsIcon sx={{ color: colors.amber }} />
+                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>AI ANALYSIS</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
+                    Review your latest MRI segmentations and histopathology reports generated by the AI engine.
+                  </Typography>
+                  <Button 
+                    fullWidth 
+                    variant="outlined"
+                    disabled={!patientData}
+                    onClick={() => navigate(`/tumor-3d?patientId=${patientData.id}`)}
+                    sx={{ color: colors.amber, borderColor: colors.amber, fontFamily: 'Rajdhani', fontWeight: 700 }}
+                  >
+                    EXPLORE 3D MODELS
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <DescriptionIcon sx={{ color: colors.green }} />
+                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>TREATMENT PLAN</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
+                    Your personalized treatment protocols and evidence-based clinical recommendations.
+                  </Typography>
+                  <Button 
+                    fullWidth 
+                    variant="outlined"
+                    disabled={!patientData}
+                    onClick={() => navigate(`/treatment-plan?patientId=${patientData.id}`)}
+                    sx={{ color: colors.green, borderColor: colors.green, fontFamily: 'Rajdhani', fontWeight: 700 }}
+                  >
+                    VIEW PROTOCOLS
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <MedicationIcon sx={{ color: colors.teal }} />
+                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>OUTCOMES</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
+                    Predicted survival rates, side-effect profiles, and quality-of-life projections.
+                  </Typography>
+                  <Button 
+                    fullWidth 
+                    variant="outlined"
+                    disabled={!patientData}
+                    onClick={() => navigate(`/outcome-prediction?patientId=${patientData.id}`)}
+                    sx={{ color: colors.teal, borderColor: colors.teal, fontFamily: 'Rajdhani', fontWeight: 700 }}
+                  >
+                    VIEW PREDICTIONS
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+    );
+  }
+
+  // --- RENDER CLINICIAN VIEW ---
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
       <Container maxWidth="xl">
         
         <Box sx={{ mb: 6 }}>
           <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
-            CLINICAL DASHBOARD
+            {isAdmin ? 'SYSTEM ADMINISTRATION' : 'CLINICAL DASHBOARD'}
           </Typography>
           <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
-            Manage patient cohorts and view AI-driven analysis results.
+            {isAdmin 
+              ? 'Oversee system-wide clinical data and platform users.' 
+              : 'Manage patient cohorts and view AI-driven analysis results.'}
           </Typography>
         </Box>
 
@@ -302,20 +486,22 @@ const Dashboard = () => {
                ))}
             </Menu>
 
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/patients')}
-              sx={{ 
-                bgcolor: colors.teal, 
-                color: '#fff', 
-                fontFamily: '"Space Grotesk"', 
-                fontWeight: 700,
-                '&:hover': { bgcolor: colors.cyan, color: '#000' } 
-              }}
-            >
-              ADD NEW PATIENT
-            </Button>
+            {isDoctor && (
+              <Button 
+                variant="contained" 
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/patients')}
+                sx={{ 
+                  bgcolor: colors.teal, 
+                  color: '#fff', 
+                  fontFamily: '"Space Grotesk"', 
+                  fontWeight: 700,
+                  '&:hover': { bgcolor: colors.cyan, color: '#000' } 
+                }}
+              >
+                ADD NEW PATIENT
+              </Button>
+            )}
           </Box>
         </Box>
 

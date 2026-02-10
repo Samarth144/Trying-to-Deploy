@@ -53,6 +53,7 @@ app.use('/api/treatments', require('./routes/treatments'));
 app.use('/api/outcomes', require('./routes/outcomes'));
 
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/uploads', require('./routes/uploads'));
 
 // Health check endpoint

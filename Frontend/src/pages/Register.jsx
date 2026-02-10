@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link, Grid } from '@mui/material';
+import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link, Grid, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -11,9 +11,11 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import ScienceIcon from '@mui/icons-material/Science'; 
 import SecurityIcon from '@mui/icons-material/Security'; 
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import { useAuth } from '../context/AuthContext';
 import './Register.css';
 
 // --- CUSTOM INPUT COMPONENT ---
+// ... (rest of TechInput component remains same)
 const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, autoComplete, value, onChange }) => {
   const [focused, setFocused] = useState(false);
 
@@ -83,6 +85,7 @@ const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, auto
 };
 
 // --- ROLE CARD COMPONENT ---
+// ... (rest of RoleCard component remains same)
 const RoleCard = ({ label, icon, selected, onSelect, color, roleKey }) => (
   <motion.div whileHover={{ y: -5 }} whileTap={{ scale: 0.95 }}>
     <Box
@@ -101,17 +104,27 @@ const RoleCard = ({ label, icon, selected, onSelect, color, roleKey }) => (
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { register, error, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('oncologist');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // For now, simulate registration and navigate to dashboard
-    console.log('Registration attempt:', { name, email, password, role });
-    navigate('/dashboard');
+    setLocalError('');
+
+    if (!name || !email || !password) {
+      setLocalError('Please fill in all fields');
+      return;
+    }
+
+    const result = await register({ name, email, password, role });
+    if (result.success) {
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -138,6 +151,12 @@ const RegisterPage = () => {
               Register to access the medical portal.
             </Typography>
           </Box>
+
+          {(error || localError) && (
+            <Alert severity="error" sx={{ mb: 3, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              {localError || error}
+            </Alert>
+          )}
 
           {/* --- FORM --- */}
           <Box component="form" onSubmit={handleRegister}>
@@ -174,7 +193,7 @@ const RegisterPage = () => {
                 </InputAdornment>
               }
             />
-
+            
             {/* ROLE SELECTOR */}
             <Box className="role-grid-container">
               <Typography variant="caption" className="role-label">
@@ -217,14 +236,16 @@ const RegisterPage = () => {
               variant="contained"
               size="large"
               type="submit"
+              disabled={loading}
               className="btn-initialize"
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, zIndex: 2 }}>
-                CREATE ACCOUNT
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'CREATE ACCOUNT'}
               </Box>
             </Button>
             
           </Box>
+
 
           {/* --- FOOTER --- */}
           <Box className="reg-footer">

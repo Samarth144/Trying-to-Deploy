@@ -26,8 +26,10 @@ const TreatmentPlan = sequelize.define('TreatmentPlan', {
         defaultValue: []
     },
     guidelineAlignment: {
-        type: DataTypes.ENUM('NCCN', 'EANO', 'ESMO', 'Other'),
-        defaultValue: 'NCCN'
+        type: DataTypes.TEXT
+    },
+    planData: {
+        type: DataTypes.JSONB
     },
     status: {
         type: DataTypes.ENUM('draft', 'proposed', 'approved', 'active', 'completed', 'discontinued'),

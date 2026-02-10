@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ScienceIcon from '@mui/icons-material/Science';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import { useAuth } from '../context/AuthContext';
 import PrecisionCarousel from '../components/PrecisionSlide';
 import Footer from '../components/Footer';
 import './Home.css';
@@ -65,6 +66,8 @@ const featuresData = [
 ];
 
 function Home() {
+  const { user, isDoctor, isAdmin } = useAuth();
+
   return (
     <>
       {/* Hero Section */}
@@ -90,17 +93,19 @@ function Home() {
             </p>
           </div>
           <div className="hero-cta">
-            {/* BUTTON 1: THE "SCANNER" (Primary Action) */}
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link to="/patients" className="btn-scanner">
-                <ScienceIcon />
-                Initialize Analysis
-              </Link>
-            </motion.div>
+            {/* BUTTON 1: THE "SCANNER" (Primary Action) - Restricted to Doctors */}
+            {(isDoctor || !user) && (
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link to="/patients" className="btn-scanner">
+                  <ScienceIcon />
+                  Initialize Analysis
+                </Link>
+              </motion.div>
+            )}
 
             {/* BUTTON 2: THE "HUD LINK" (Secondary Action) */}
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link to="/dashboard" className="btn-hud">
+              <Link to={isAdmin ? "/admin" : "/dashboard"} className="btn-hud">
                 <DashboardIcon />
                 Enter Dashboard
                 {/* Decorative Corner Brackets */}
@@ -142,20 +147,25 @@ function Home() {
             <p>Choose your role to access the appropriate interface and tools</p>
 
             <div className="role-cards">
-              <Link to="/dashboard" className="role-card">
+              <Link to="/login" className="role-card">
                 <h3>👨‍⚕️ Oncologist</h3>
                 <p>Access full clinical decision support tools and patient management</p>
               </Link>
 
-              <div className="role-card">
+              <Link to="/login" className="role-card">
                 <h3>🧑‍⚕️ Patient</h3>
                 <p>View personalized treatment pathways and educational resources</p>
-              </div>
+              </Link>
 
-              <div className="role-card">
+              <Link to="/login" className="role-card">
                 <h3>🔬 Researcher</h3>
                 <p>Explore AI models, datasets, and audit trails</p>
-              </div>
+              </Link>
+
+              <Link to="/login" className="role-card">
+                <h3>🛡️ Admin</h3>
+                <p>Manage users, system logs, and security protocols</p>
+              </Link>
             </div>
           </div>
         </div>
