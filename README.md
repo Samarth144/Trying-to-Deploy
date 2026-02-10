@@ -28,9 +28,9 @@ The project is divided into three main components: Backend, Frontend, and AI Eng
 ### 1. Database Setup
 
 1. Install PostgreSQL.
-2. Create a database named `neuro_onco_ai`:
+2. Create a database named `Resonance`:
    ```sql
-   CREATE DATABASE neuro_onco_ai;
+   CREATE DATABASE Resonance;
    ```
    *Note: Default credentials assumed are user `postgres` with password `postgres` on `localhost:5432`. You can configure this in `Backend/.env`.*
 
@@ -80,7 +80,7 @@ Create a `.env` file in the `Backend` directory (or modify the existing one):
 ```env
 NODE_ENV=development
 PORT=8000
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/neuro_onco_ai
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/Resonance
 JWT_SECRET=your_super_secret_jwt_key
 JWT_EXPIRE=30d
 ```
