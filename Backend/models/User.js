@@ -33,6 +33,10 @@ const User = sequelize.define('User', {
     role: {
         type: DataTypes.ENUM('oncologist', 'patient', 'researcher', 'admin'),
         defaultValue: 'oncologist'
+    },
+    faceDescriptors: {
+        type: DataTypes.JSON,
+        allowNull: true
     }
 }, {
     hooks: {

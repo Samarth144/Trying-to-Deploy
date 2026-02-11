@@ -22,6 +22,7 @@ import ClinicalBaselineDemo from './pages/ClinicalBaselineDemo';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
+import FaceRegisterPage from './pages/FaceRegisterPage';
 
 // Create a global theme instance
 // ... (theme definition remains same)
@@ -75,6 +76,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/face-register" element={<FaceRegisterPage />} />
 
               {/* Protected Routes (All Roles) */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

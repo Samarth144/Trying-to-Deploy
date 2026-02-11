@@ -47,6 +47,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mount routers
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/face-auth', require('./routes/faceAuth'));
 app.use('/api/patients', require('./routes/patients'));
 app.use('/api/analyses', require('./routes/analysis'));
 app.use('/api/treatments', require('./routes/treatments'));

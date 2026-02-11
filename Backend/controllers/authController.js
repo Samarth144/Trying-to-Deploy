@@ -126,3 +126,30 @@ exports.getMe = async (req, res) => {
         });
     }
 };
+
+// @desc    Check user role by email
+// @route   GET /api/auth/check-role/:email
+// @access  Public
+exports.checkUserRole = async (req, res) => {
+    try {
+        const user = await User.findOne({ where: { email: req.params.email } });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                id: user.id, // Include user ID
+                role: user.role,
+                hasFaceLogin: user.faceDescriptors && user.faceDescriptors.length > 0
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

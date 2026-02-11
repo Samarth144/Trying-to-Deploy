@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,207 +8,215 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import BoltIcon from '@mui/icons-material/Bolt';
+import Webcam from 'react-webcam';
+import * as faceapi from 'face-api.js';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
-// --- CUSTOM INPUT COMPONENT ---
-// ... (rest of TechInput component remains same)
-const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, autoComplete, value, onChange }) => {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <Box className="tech-input-group">
-      <Box className="tech-label-row">
-        <Typography variant="caption" className="tech-label">
-          {label}
-        </Typography>
-        <Typography variant="caption" className={`tech-status ${focused ? 'active' : ''}`}>
-          {focused ? 'INPUT_ACTIVE' : 'READY'}
-        </Typography>
-      </Box>
-
-      <Box className="input-wrapper">
-        <TextField
-          fullWidth
-          type={type}
-          variant="standard"
-          placeholder={focused ? '' : placeholder}
-          value={value}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className={`tech-field ${focused ? 'tech-field-active' : ''}`}
-          inputProps={{
-            autoComplete: autoComplete
-          }}
-          InputProps={{
-            disableUnderline: true,
-            className: "tech-field-base",
-            startAdornment: (
-              <InputAdornment position="start">
-                {React.cloneElement(icon, { sx: { color: focused ? '#00F0FF' : '#64748B', transition: 'color 0.3s' } })}
-              </InputAdornment>
-            ),
-            endAdornment: endAdornment,
-            style: { 
-                border: `1px solid ${focused ? '#00F0FF' : 'rgba(255,255,255,0.1)'}`,
-                padding: '12px 16px',
-                borderRadius: '4px',
-                backgroundColor: '#0B1221',
-                color: '#fff'
-            }
-          }}
-          sx={{
-            "& .MuiInputBase-input::placeholder": {
-              color: "rgba(255, 255, 255, 0.2)",
-              opacity: 1,
-              fontFamily: '"Space Grotesk"',
-              fontSize: '0.9rem'
-            },
-            "& .MuiInputBase-input": {
-              color: "#fff !important",
-              backgroundColor: "transparent !important",
-              WebkitTextFillColor: "#fff !important",
-            },
-            // Fix for Autocomplete background
-            "& input:-webkit-autofill": {
-              WebkitBoxShadow: "0 0 0 100px #0B1221 inset !important",
-              WebkitTextFillColor: "#fff !important",
-            }
-          }}
-        />
-        
-        {/* Animated Scan Line at Bottom */}
-        <Box className="scan-line-container">
-           <motion.div 
-             className="scan-line"
-             initial={{ x: '-100%' }}
-             animate={focused ? { x: '100%' } : { x: '-100%' }}
-             transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-           />
-        </Box>
-      </Box>
-    </Box>
-  );
-};
-
-const LoginPage = () => {
-  const navigate = useNavigate();
-  const { login, error, loading } = useAuth();
-  const [showPassword, setShowPassword] = useState(false);
+const Login = () => {
+  // State variables for login form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [localError, setLocalError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login, setAuthData } = useAuth(); // Assuming useAuth provides login and setAuthData functions
 
-  const handleLogin = async (e) => {
+  // Face authentication states
+  const [step, setStep] = useState('details'); // 'details' or 'face'
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const webcamRef = useRef(null);
+  const [faceMessage, setFaceMessage] = useState('Please wait, loading models...');
+
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+      console.log('Loading models from:', MODEL_URL);
+      try {
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        setModelsLoaded(true);
+        setFaceMessage('Position your face in the frame.');
+        console.log('Models loaded successfully.');
+      } catch (e) {
+        setError('Could not load face recognition models. Please refresh the page.');
+        console.error('Model loading error:', e);
+      }
+    };
+    loadModels();
+  }, []);
+
+  const handleDetailsSubmit = async (e) => {
     e.preventDefault();
-    setLocalError('');
-    
-    if (!email || !password) {
-      setLocalError('Please enter both email and password');
+    setLoading(true);
+    setError('');
+    try {
+      // First, authenticate with email and password
+      const result = await login(email, password);
+      if (result.success) {
+        // If email/password is correct, proceed to face authentication step
+        setStep('face');
+        setLoading(false); // Reset loading for face scan step
+      } else {
+        setError(result.message || 'Login failed');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred during initial login.');
+      console.error('Login error:', err);
+      setLoading(false);
+    }
+  };
+
+  const handleFaceCaptureAndLogin = async () => {
+    if (!webcamRef.current || !modelsLoaded) {
+      setError('Webcam not ready or models are still loading.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setFaceMessage('Detecting face...');
+
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc) {
+      setError('Could not capture image.');
+      setLoading(false);
       return;
     }
 
-    const result = await login(email, password);
-    if (result.success) {
+    const img = await faceapi.fetchImage(imageSrc);
+    const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+
+    if (!detection) {
+      setError('No face detected. Please try again.');
+      setLoading(false);
+      return;
+    }
+
+    setFaceMessage('Face detected. Verifying...');
+    const capturedDescriptor = detection.descriptor;
+
+    try {
+      // Send email and face descriptor to backend for verification
+      const { data } = await axios.post('/face-auth/login', {
+        email,
+        descriptor: Array.from(capturedDescriptor) // Convert Float32Array to regular array for JSON
+      });
+      
+      // Assuming the backend returns auth data on success
+      setAuthData(data.data);
       navigate('/dashboard');
+
+    } catch (err) {
+      setError(err.response?.data?.message || 'Face verification failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <Box className="login-root">
-      
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Box className="login-card">
-
-          {/* --- DECORATIVE CORNER BRACKETS --- */}
           <div className="corner-bracket corner-tl" />
-          <div className="corner-bracket corner-tr" />
-          <div className="corner-bracket corner-bl" />
           <div className="corner-bracket corner-br" />
 
-          {/* --- HEADER --- */}
-          <Box className="login-header">
-            <div className="security-badge">
-               <FingerprintIcon sx={{ fontSize: 16, color: '#00F0FF' }} />
-               <span className="security-text">
-                 SECURE CLINICAL PORTAL
-               </span>
-            </div>
-            
-            <Typography variant="h4" className="system-title">
-              RESONANCE
-            </Typography>
-            <Typography variant="body2" className="system-subtitle">
-              Sign in to your account
-            </Typography>
-          </Box>
+          {step === 'details' && (
+            <>
+              <Box className="login-header">
+                <Typography variant="h4" className="login-title">Login</Typography>
+                <Typography variant="body2" className="login-subtitle">Access your personalized treatment plan.</Typography>
+              </Box>
 
-          {(error || localError) && (
-            <Alert severity="error" sx={{ mb: 3, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-              {localError || error}
-            </Alert>
+              {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+              <Box component="form" onSubmit={handleDetailsSubmit}>
+                <TextField
+                  fullWidth
+                  label="Email Address"
+                  variant="outlined"
+                  margin="normal"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailOutlinedIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  variant="outlined"
+                  margin="normal"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  type="submit"
+                  disabled={loading}
+                  sx={{ mt: 3, mb: 2 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Login'}
+                </Button>
+              </Box>
+
+              <Box className="login-footer">
+                <Link onClick={() => navigate('/register')} sx={{ cursor: 'pointer'}}>
+                  New operative detected? Register
+                </Link>
+              </Box>
+            </>
           )}
 
-          {/* --- FORM --- */}
-          <Box component="form" onSubmit={handleLogin}>
-            <TechInput 
-              label="Email Address" 
-              icon={<EmailOutlinedIcon />} 
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            
-            <TechInput 
-              label="Password" 
-              type={showPassword ? "text" : "password"} 
-              icon={<LockOutlinedIcon />}
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              endAdornment={
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ color: '#64748B' }}>
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              }
-            />
+          {step === 'face' && (
+            <>
+              <Box className="login-header">
+                <Typography variant="h4" className="login-title">Face Verification</Typography>
+                <Typography variant="body2" className="login-subtitle">Please scan your face to complete login.</Typography>
+              </Box>
 
-            {/* --- ACTION BUTTON --- */}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              type="submit"
-              disabled={loading}
-              className="btn-connect"
-            >
-              <div className="btn-connect-content">
-                {loading ? <CircularProgress size={24} color="inherit" /> : <><BoltIcon /> Sign In</>}
-              </div>
-            </Button>
-            
-          </Box>
-
-
-          {/* --- FOOTER --- */}
-          <Box className="login-footer">
-            <Link onClick={() => navigate('/register')} className="access-link" sx={{ cursor: 'pointer' }}>
-              New user? <span className="link-highlight">Create an account</span>
-            </Link>
-          </Box>
-
+              {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" width={400} height={400} videoConstraints={{ facingMode: 'user' }} style={{ borderRadius: '8px', border: '2px solid #00F0FF' }} />
+                  <Typography variant="body2" sx={{ mt: 2, color: '#94A3B8' }}>{faceMessage}</Typography>
+                  <Button fullWidth variant="contained" size="large" onClick={handleFaceCaptureAndLogin} disabled={loading || !modelsLoaded} className="btn-initialize" sx={{ mt: 2 }}>
+                      {loading ? <CircularProgress size={24} /> : 'Scan Face & Login'}
+                  </Button>
+                  <Button fullWidth variant="text" onClick={() => setStep('details')} disabled={loading} sx={{ mt: 1 }}>Back to Email/Password</Button>
+              </Box>
+            </>
+          )}
         </Box>
       </motion.div>
     </Box>
   );
 };
 
-export default LoginPage;
+export default Login;
