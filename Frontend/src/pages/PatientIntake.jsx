@@ -195,26 +195,38 @@ const TagInput = ({ label, icon, tags, onAdd, onDelete }) => {
   );
 };
 
-const UploadZone = ({ type, label, file, onUpload, onDelete, index }) => {
-  const [isScanning, setIsScanning] = useState(false);
+const UploadZone = ({ type, label, file, onUpload, onDelete, index, height, scanning }) => {
+  const [localScanning, setLocalScanning] = useState(false);
+  const isActuallyScanning = scanning || localScanning;
+
   const handleFileSelect = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setIsScanning(true);
+      setLocalScanning(true);
       setTimeout(() => {
-        setIsScanning(false);
+        setLocalScanning(false);
         onUpload(type, e.target.files[0]);
-      }, 1500);
+      }, 1000);
     }
   };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-      <Box className={`upload-zone ${file ? 'has-file' : ''}`} component="label">
-        {!file && <input type="file" hidden onChange={handleFileSelect} />}
+      <Box 
+        className={`upload-zone ${file ? 'has-file' : ''} ${isActuallyScanning ? 'is-scanning' : ''}`} 
+        component="label"
+        sx={height ? { height: height, minHeight: height } : {}}
+      >
+        {!file && !isActuallyScanning && <input type="file" hidden onChange={handleFileSelect} />}
         <AnimatePresence mode="wait">
-          {isScanning ? (
-            <motion.div key="scanning" className="scanning-container">
-              <Typography variant="caption" className="scanning-text">PARSING DICOM HEADERS...</Typography>
-              <LinearProgress className="tech-progress" />
+          {isActuallyScanning ? (
+            <motion.div key="scanning" className="scanning-container-v2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div className="scanner-glow-circle">
+                <BiotechIcon className="scanning-icon-ai" />
+                <div className="pulse-ring"></div>
+              </div>
+              <Typography variant="h6" className="scanning-text-v2">AI EXTRACTING DATA...</Typography>
+              <Typography variant="caption" className="scanning-sub-v2">ANALYZING PATHOLOGY MARKERS</Typography>
+              <div className="scanning-bar-v2"></div>
             </motion.div>
           ) : file ? (
             <motion.div key="file" className="file-info-container">
@@ -273,6 +285,7 @@ const StatusChip = ({ label, type }) => {
 const PatientIntake = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isScanningPathology, setIsScanningPathology] = useState(false);
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', email: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
@@ -285,6 +298,77 @@ const PatientIntake = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (field, value) => setFormData({ ...formData, [field]: value });
+
+  // --- AUTO-FILL LOGIC ---
+  // --- AUTO-FILL LOGIC ---
+  const formatToInputDate = (dateStr) => {
+    if (!dateStr) return '';
+    // Handle MM/DD/YYYY
+    if (dateStr.includes('/')) {
+      const [m, d, y] = dateStr.split('/');
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    return dateStr; // Already YYYY-MM-DD
+  };
+
+  const handlePathologyUpload = async (file) => {
+    handleChange('pathologyFile', file);
+    setIsScanningPathology(true);
+    setLoading(true);
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('histopathology_pdf', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      // 1. Upload the file to get a server path
+      const uploadRes = await axios.post('http://localhost:8000/api/uploads/histopathology', formDataUpload, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}` 
+        }
+      });
+
+      if (uploadRes.data.filename) {
+        // 2. Call AI Engine to extract data
+        const aiRes = await axios.post('http://localhost:5000/process_report_file', {
+          file_path: `../Backend/uploads/reports/${uploadRes.data.filename}`
+        });
+
+        if (aiRes.data.extracted_data) {
+          const ext = aiRes.data.extracted_data;
+          
+          // Update Form with extracted values
+          setFormData(prev => ({
+            ...prev,
+            name: ext.name || prev.name,
+            mrn: ext.mrn || prev.mrn,
+            dob: formatToInputDate(ext.dob) || prev.dob,
+            age: ext.age || prev.age,
+            diagnosisDate: formatToInputDate(ext.diagnosis_date) || prev.diagnosisDate,
+            cancerType: ext.cancer_type || prev.cancerType,
+            idh1: ext.IDH1 || prev.idh1,
+            mgmt: ext.MGMT || prev.mgmt,
+            er: ext.ER || prev.er,
+            pr: ext.PR || prev.pr,
+            her2: ext.HER2 || prev.her2,
+            brca: ext.BRCA ? 'Mutated' : prev.brca,
+            ki67: ext.ki67 || prev.ki67,
+            kps: ext.kps || prev.kps,
+            ecog: ext.ecog !== undefined ? ext.ecog : prev.ecog
+          }));
+          
+          alert("✓ Report Scanned: Fields auto-populated with AI extraction.");
+        }
+      }
+    } catch (err) {
+      console.error("Auto-fill failed:", err);
+    } finally {
+      setIsScanningPathology(false);
+      setLoading(false);
+    }
+  };
+
   const handleMRIUpload = (type, file) => setUploadedFiles(prev => ({ ...prev, [`mri_${type}`]: file }));
   const handleMRIDelete = (type) => setUploadedFiles(prev => {
     const newFiles = { ...prev };
@@ -387,8 +471,8 @@ const PatientIntake = () => {
       <Grid container spacing={4} className="intake-grid">
         {currentStep === 1 && (
           <Grid item xs={12} className="preview-column">
-            <div className="preview-layout-row">
-              <Box className="preview-wrapper">
+            <div className="preview-layout-row" style={{ display: 'flex', gap: '32px', alignItems: 'stretch', flexWrap: 'wrap' }}>
+              <Box className="preview-wrapper" style={{ flex: 1, minWidth: '350px' }}>
                 <Typography variant="h3" className="page-title">NEW CASE</Typography>
                 <Typography variant="body1" className="page-subtitle">Initialize multimodal data collection.</Typography>
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -409,6 +493,27 @@ const PatientIntake = () => {
                     </div>
                   </div>
                 </motion.div>
+              </Box>
+
+              {/* MOVED PATHOLOGY UPLOAD HERE */}
+              <Box className="quick-upload-wrapper" style={{ flex: '0 1 auto', minWidth: '350px' }}>
+                 <div className="form-terminal" style={{ height: '100%', padding: '24px', width: 'fit-content' }}>
+                    <div className="terminal-header" style={{ marginBottom: '16px' }}>
+                      <Typography variant="h6" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>AUTO-EXTRACTOR</Typography>
+                      <Chip label="AI POWERED" size="small" sx={{ bgcolor: 'rgba(0, 240, 255, 0.1)', color: '#00F0FF', fontSize: '10px', fontWeight: 800 }} />
+                    </div>
+                    <Typography className="field-label" sx={{ mb: 2 }}>Upload Clinical Pathology Report (PDF) to auto-fill patient profile</Typography>
+                    <UploadZone 
+                      type="PATHOLOGY" 
+                      label="Drop PDF here to scan" 
+                      file={formData.pathologyFile} 
+                      onUpload={(_, file) => handlePathologyUpload(file)} 
+                      onDelete={() => handleChange('pathologyFile', null)} 
+                      index={0} 
+                      height="250px"
+                      scanning={isScanningPathology}
+                    />
+                 </div>
               </Box>
             </div>
           </Grid>
@@ -459,17 +564,6 @@ const PatientIntake = () => {
                             />
                           </Grid>
                         </Grid>
-                        <Box sx={{ mt: 2 }}>
-                          <Typography className="field-label">Clinical Pathology Report (PDF/IMG)</Typography>
-                          <UploadZone 
-                            type="PATHOLOGY" 
-                            label="Upload biopsy or surgical report" 
-                            file={formData.pathologyFile} 
-                            onUpload={(_, file) => handleChange('pathologyFile', file)} 
-                            onDelete={() => handleChange('pathologyFile', null)} 
-                            index={4} 
-                          />
-                        </Box>
                       </div>
                     </Grid>
                     <Grid item xs={12} md={3}>
