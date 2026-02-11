@@ -28,33 +28,10 @@ const uploadHistopathologyReport = async (req, res) => {
     return res.status(400).json({ message: 'No file uploaded.' });
   }
 
-  const filePath = req.file.path;
-  const absolutePath = path.resolve(filePath);
-
-  try {
-    // Send file path to AI engine for analysis
-    console.log('Sending file path to AI Engine:', absolutePath);
-    const aiResponse = await axios.post('http://localhost:5000/process_report_file', {
-      file_path: absolutePath,
-      cancer_type: req.body.cancer_type // Pass if provided
-    });
-
-    // Send the AI's response back to the frontend
-    res.status(200).json({
-      message: 'File uploaded and processed successfully by AI.',
-      filename: req.file.filename,
-      ...aiResponse.data,
-    });
-  } catch (error) {
-    console.error('Error contacting AI engine for PDF processing:', error.message);
-    if (error.response) {
-      console.error('AI Engine Response:', error.response.data);
-      return res.status(500).json({ message: 'Error from AI engine.', details: error.response.data });
-    } else if (error.request) {
-      return res.status(500).json({ message: 'AI engine did not respond.' });
-    }
-    res.status(500).json({ message: 'Error processing PDF file.' });
-  }
+  res.status(200).json({
+    message: 'File uploaded successfully.',
+    filename: req.file.filename
+  });
 };
 
 module.exports = {

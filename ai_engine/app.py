@@ -5,6 +5,15 @@ from llm.llm_chain import generate_treatment_plan, predict_outcomes
 import re
 import random
 import pdfplumber
+import spacy
+
+# Load scispaCy model for medical entity extraction
+try:
+    nlp = spacy.load("en_core_sci_sm")
+    print("[AI ENGINE] scispaCy model loaded successfully.")
+except Exception as e:
+    print(f"[AI ENGINE] Error loading scispaCy: {e}. Falling back to standard spaCy.")
+    nlp = None
 
 app = Flask(__name__)
 CORS(app)
@@ -36,54 +45,101 @@ def clean_value(text):
 def parse_report_text(text):
     """
     Parses unstructured report text. 
-    Enhanced to handle 'Table-style' extractions for both Breast and Brain.
+    Uses a hybrid of Regex and scispaCy for high-accuracy local extraction.
     """
     patient_data = {}
-    # Remove colons and normalize spaces for robust regex matching
+    
+    # 1. Clean and Normalize Text
     clean_text = re.sub(':', '', text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
-    # 1. Cancer Type Detection
-    if re.search(r"Breast", clean_text, re.IGNORECASE): 
-        patient_data['cancer_type'] = "Breast"
-    elif re.search(r"Brain|Neuropathology|Glioma|Glioblastoma", clean_text, re.IGNORECASE): 
-        patient_data['cancer_type'] = "Brain"
+    # 2. NLP Analysis with scispaCy
+    doc = nlp(text) if nlp else None
     
-    # 2. Demographics
+    # Extract entities for context
+    entities = [ent.text.lower() for ent in doc.ents] if doc else []
+
+    # 3. Cancer Type Detection
+    if any(kw in clean_text.lower() for kw in ["breast", "mammary", "ductal"]):
+        patient_data['cancer_type'] = "Breast"
+    elif any(kw in clean_text.lower() for kw in ["brain", "neuropathology", "glioma", "glioblastoma", "astrocytoma"]):
+        patient_data['cancer_type'] = "Brain"
+    elif any(kw in clean_text.lower() for kw in ["lung", "pulmonary", "nsclc", "sclc"]):
+        patient_data['cancer_type'] = "Lung"
+    elif any(kw in clean_text.lower() for kw in ["liver", "hepatocellular", "hcc", "hepatic"]):
+        patient_data['cancer_type'] = "Liver"
+    elif any(kw in clean_text.lower() for kw in ["pancreas", "pancreatic", "panc"]):
+        patient_data['cancer_type'] = "Pancreas"
+    
+    # 4. Demographics (Regex remains most reliable for numbers)
     age_m = re.search(r"Age\s*(\d+)", clean_text, re.IGNORECASE)
     if age_m: patient_data['age'] = int(age_m.group(1))
 
-    # 3. Biomarkers (Brain Specific)
+    # Name Extraction (More robust for different layouts)
+    name_m = re.search(r"(?:Patient\s*)?Name\s*[:\n]\s*([^0-9\n:]+)", text, re.IGNORECASE)
+    if name_m: 
+        patient_data['name'] = name_m.group(1).strip()
+
+    # MRN Extraction (Table-Aware)
+    mrn_m = re.search(r"MRN\s*[:\n]\s*([A-Z0-9-]+)", text, re.IGNORECASE)
+    if mrn_m: patient_data['mrn'] = mrn_m.group(1).strip()
+
+    # DOB Extraction (Table-Aware)
+    dob_m = re.search(r"DOB\s*[:\n]\s*(\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})", text, re.IGNORECASE)
+    if dob_m: patient_data['dob'] = dob_m.group(1).strip()
+
+    # Date of Diagnosis Extraction
+    diag_date_m = re.search(r"Date of Diagnosis\s*[:\n]\s*(\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})", text, re.IGNORECASE)
+    if diag_date_m: patient_data['diagnosis_date'] = diag_date_m.group(1).strip()
+
+    # KPS Score Extraction
+    kps_m = re.search(r"KPS Score\s*[:\n]\s*(\d+)", text, re.IGNORECASE)
+    if kps_m: patient_data['kps'] = int(kps_m.group(1))
+
+    # ECOG Score Extraction
+    ecog_m = re.search(r"ECOG Score\s*[:\n]\s*(\d)", text, re.IGNORECASE)
+    if ecog_m: patient_data['ecog'] = int(ecog_m.group(1))
+
+    # 5. Biomarkers (Brain)
     # MGMT
-    mgmt_m = re.search(r"MGMT\s*(Promoter)?\s*(Methylated|Unmethylated|Positive|Negative)", clean_text, re.IGNORECASE)
+    mgmt_m = re.search(r"MGMT\s*(?:Promoter)?\s*(?:Status)?\s*(Methylated|Unmethylated|Positive|Negative)", clean_text, re.IGNORECASE)
     if mgmt_m:
-        patient_data['MGMT'] = mgmt_m.group(2).capitalize()
+        patient_data['MGMT'] = mgmt_m.group(1).capitalize()
     
     # IDH
-    idh_m = re.search(r"IDH\s*(Status)?\s*(Mutant|Wild-Type|Mutated|WT|Positive|Negative)", clean_text, re.IGNORECASE)
+    idh_m = re.search(r"IDH\s*(?:Status)?\s*(Mutant|Wild-Type|Wildtype|Mutated|WT|Positive|Negative|1|2)", clean_text, re.IGNORECASE)
     if idh_m:
-        val = idh_m.group(2).upper()
-        if val in ["MUTANT", "MUTATED", "POSITIVE"]: patient_data['IDH1'] = "Mutant"
-        else: patient_data['IDH1'] = "Wild-Type"
+        val = idh_m.group(1).upper()
+        if val in ["MUTANT", "MUTATED", "POSITIVE", "1", "2"]: 
+            patient_data['IDH1'] = "Mutated"
+        else: 
+            patient_data['IDH1'] = "Wild Type"
 
-    # 4. Biomarkers (Breast Specific)
+    # 6. Biomarkers (Breast)
     for marker in ['ER', 'PR', 'HER2']:
-        m = re.search(rf"{marker}\s*Status\s*(Positive|Negative|3\+|2\+|1\+|0)", clean_text, re.IGNORECASE)
+        m = re.search(rf"{marker}\s*(Status)?\s*(Positive|Negative|3\+|2\+|1\+|0)", clean_text, re.IGNORECASE)
         if m:
-            val = m.group(1).capitalize()
+            val = m.group(2).capitalize()
             patient_data[marker] = "Positive" if val in ["Positive", "3+"] else "Negative"
 
-    brca_m = re.search(r"BRCA[12]?\s*(Positive|Mutated|Mutant|Present)", clean_text, re.IGNORECASE)
+    brca_m = re.search(r"BRCA[12]?\s*(Positive|Mutated|Mutant|Present|Detected)", clean_text, re.IGNORECASE)
     if brca_m: patient_data['BRCA'] = "positive"
     
     ki_m = re.search(r"Ki-67.*?(\d+)%", clean_text, re.IGNORECASE)
     if ki_m: patient_data['ki67'] = ki_m.group(1)
 
-    # 5. Diagnosis & Grade
-    # Improved Diagnosis capture: stop at the next known field
-    diag_m = re.search(r"Diagnosis\s*(.*?)(?:IDH|MGMT|WHO|Grade|Tumor|Stage|ER Status|$)", clean_text, re.IGNORECASE)
-    if diag_m:
-        patient_data['diagnosis'] = diag_m.group(1).strip()
+    # 7. Diagnosis & Grade Enhancement with NLP
+    if doc:
+        # Use scispaCy to find specific disease entities if Regex misses it
+        for ent in doc.ents:
+            if ent.label_ in ["DISEASE", "CANCER"] and not patient_data.get('diagnosis'):
+                patient_data['diagnosis'] = ent.text
+                break
+
+    if not patient_data.get('diagnosis'):
+        diag_m = re.search(r"Diagnosis\s*(.*?)(?:IDH|MGMT|WHO|Grade|Tumor|Stage|ER Status|$)", clean_text, re.IGNORECASE)
+        if diag_m:
+            patient_data['diagnosis'] = diag_m.group(1).strip()
     
     # Grade (Universal)
     grade_m = re.search(r"(?:WHO\s*)?Grade\s*([IV1234]+)", clean_text, re.IGNORECASE)
@@ -91,11 +147,10 @@ def parse_report_text(text):
         g = grade_m.group(1).upper()
         mapping = {"1": "I", "2": "II", "3": "III", "4": "IV"}
         patient_data['grade'] = mapping.get(g, g)
-        # Brain rule engine uses grade to help determine LOCALIZED status
         if patient_data.get('cancer_type') == 'Brain':
             patient_data['stage'] = 'LOCALIZED' 
 
-    # 6. Staging (Breast/Others)
+    # 8. Staging
     if patient_data.get('cancer_type') != 'Brain':
         stage_m = re.search(r"Stage\s*([IV01234]+)", clean_text, re.IGNORECASE)
         if stage_m:
