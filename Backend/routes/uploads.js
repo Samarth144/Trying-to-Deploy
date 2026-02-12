@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { uploadHistopathologyReport, uploadMRI } = require('../controllers/uploadController');
+const { uploadHistopathologyReport, uploadMRI, uploadVCF } = require('../controllers/uploadController');
 
 const router = express.Router();
 
@@ -23,6 +23,8 @@ const storage = multer.diskStorage({
         const safeMrn = req.body.mrn.replace(/[^a-zA-Z0-9-_]/g, '_');
         uploadPath = path.join(uploadPath, safeMrn);
       }
+    } else if (file.fieldname === 'vcf_file') {
+      uploadPath = path.join(__dirname, '..', 'uploads', 'genomics');
     } else {
       // Default to reports for histopathology_pdf
       uploadPath = path.join(__dirname, '..', 'uploads', 'reports');
@@ -44,6 +46,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 router.post('/histopathology', upload.single('histopathology_pdf'), uploadHistopathologyReport);
+router.post('/vcf', upload.single('vcf_file'), uploadVCF);
 
 // Update route to handle multiple fields
 const mriUpload = upload.fields([

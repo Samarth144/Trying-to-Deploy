@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+17	41197708	.	C	T	100	PASS	DP=800;AF=0.65;ANN=BRCA1(p.R1443X)
+17	37880978	.	G	A	100	PASS	DP=750;AF=0.52;ANN=ERBB2(amplification)
+1	11223344	.	T	C	60	PASS	DP=200;AF=0.15

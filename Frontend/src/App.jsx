@@ -16,7 +16,6 @@ import Histopathology from './pages/Histopathology';
 import TreatmentPlan from './pages/TreatmentPlan';
 import OutcomePrediction from './pages/OutcomePrediction';
 import PathwaySimulator from './pages/PathwaySimulator';
-import BlockchainAudit from './pages/BlockchainAudit';
 import PatientProfile from './pages/PatientProfile';
 import ClinicalBaselineDemo from './pages/ClinicalBaselineDemo';
 import AdminDashboard from './pages/AdminDashboard';
@@ -105,7 +104,6 @@ function App() {
               } />
               
               <Route path="/pathway-simulator" element={<ProtectedRoute><PathwaySimulator /></ProtectedRoute>} />
-              <Route path="/blockchain-audit" element={<ProtectedRoute><BlockchainAudit /></ProtectedRoute>} />
               <Route path="/baseline-demo" element={<ProtectedRoute><ClinicalBaselineDemo /></ProtectedRoute>} />
             </Routes>
           </Box>

@@ -23,9 +23,9 @@ const stats = [
     icon: <AutoGraphOutlinedIcon />
   },
   { 
-    label: "Audit Security", 
+    label: "Data Integrity", 
     value: "100%", 
-    sub: "Immutable Polygon Ledger",
+    sub: "Validated Clinical Evidence",
     color: "amber",
     icon: <VerifiedUserOutlinedIcon />
   },
@@ -61,7 +61,7 @@ function About() {
                   By fusing <strong>Radiomics</strong> (MRI/CT), <strong>Genomics</strong> (NGS markers like BRCA/IDH1), and <strong>Pathology</strong> into a unified patient profile, we empower Tumor Boards to generate evidence-based protocols with unprecedented accuracy.
                 </p>
                 <p>
-                  From <strong>Glioma</strong> to <strong>Pancreatic Carcinoma</strong>, our engine delivers explainable insights secured by blockchain technology—ensuring that every decision is transparent, auditable, and precise.
+                  From <strong>Glioma</strong> to <strong>Pancreatic Carcinoma</strong>, our engine delivers explainable insights backed by clinical evidence—ensuring that every decision is transparent, validated, and precise.
                 </p>
               </div>
 

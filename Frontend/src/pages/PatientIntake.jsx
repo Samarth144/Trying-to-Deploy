@@ -286,6 +286,9 @@ const PatientIntake = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isScanningPathology, setIsScanningPathology] = useState(false);
+  const [vcfFile, setVcfFile] = useState(null); // State for VCF file object
+  const [isScanningVCF, setIsScanningVCF] = useState(false); // State for VCF scanning animation
+  const [vcfAnalysisResult, setVcfAnalysisResult] = useState(null); // State for VCF analysis results
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', email: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
@@ -296,6 +299,7 @@ const PatientIntake = () => {
   });
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (field, value) => setFormData({ ...formData, [field]: value });
 
@@ -376,6 +380,63 @@ const PatientIntake = () => {
     return newFiles;
   });
 
+  const handleVCFImport = async (file) => {
+    if (!file) return;
+
+    setVcfFile(file);
+    setIsScanningVCF(true);
+    setLoading(true);
+    setError('');
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('vcf_file', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      // 1. Upload the file to get a server path
+      const uploadRes = await axios.post('http://localhost:8000/api/uploads/vcf', formDataUpload, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}` 
+        }
+      });
+
+      if (uploadRes.data.filename) {
+        // 2. Call AI Engine to process VCF data
+        const aiRes = await axios.post('http://localhost:5000/process_vcf', {
+          file_path: `../Backend/uploads/genomics/${uploadRes.data.filename}` // Adjust path as needed
+        });
+
+        if (aiRes.data.markers) {
+          setVcfAnalysisResult(aiRes.data); // Store full VCF analysis result
+          
+          // Update Form with extracted values from VCF
+          setFormData(prev => {
+            const updated = { ...prev };
+            Object.keys(aiRes.data.markers).forEach(key => {
+              // Ensure key exists in formData and update its value
+              if (updated.hasOwnProperty(key)) {
+                updated[key] = aiRes.data.markers[key].value;
+              }
+            });
+            return updated;
+          });
+          alert(`✓ VCF Analysis Complete: ${aiRes.data.stats.actionable_found} actionable variants identified.`);
+        } else {
+            alert("No actionable variants identified in VCF.");
+            setVcfAnalysisResult(null);
+        }
+      }
+    } catch (err) {
+      console.error("VCF Import failed:", err);
+      alert("Error parsing VCF file: " + (err.response?.data?.message || err.message));
+      setVcfAnalysisResult(null);
+    } finally {
+      setIsScanningVCF(false);
+      setLoading(false);
+    }
+  };
+
   const handleCompleteIntake = async () => {
     setLoading(true);
     try {
@@ -444,8 +505,9 @@ const PatientIntake = () => {
         }
 
         // 3. Save Patient Data
-        const payload = { ...formData, pathologyReportPath: reportPath, mriPaths };
+        const payload = { ...formData, pathologyReportPath: reportPath, mriPaths, vcfAnalysis: vcfAnalysisResult };
         delete payload.pathologyFile; // Remove file object
+        delete payload.vcfFile; // Remove file object
 
         const response = await axios.post('http://localhost:8000/api/patients', payload, {
             headers: { Authorization: `Bearer ${token}` }
@@ -650,8 +712,32 @@ const PatientIntake = () => {
                       <Typography variant="h5">03 // GENOMIC DECODER</Typography>
                       <span className="req-badge">MOLECULAR MARKERS</span>
                     </div>
-                    <Button startIcon={<FileUploadOutlinedIcon />} className="vcf-import-btn" variant="outlined" size="small">
-                      IMPORT .VCF FILE
+                    {vcfAnalysisResult && (
+                      <Chip
+                        icon={vcfAnalysisResult.success ? <CheckCircleIcon /> : <ErrorOutlineIcon />}
+                        label={`${vcfAnalysisResult.stats.actionable_found} ACTIONABLE VARIANTS`}
+                        color={vcfAnalysisResult.success ? "success" : "error"}
+                        size="small"
+                        sx={{ ml: 2, bgcolor: vcfAnalysisResult.success ? 'rgba(0, 240, 255, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: vcfAnalysisResult.success ? '#00F0FF' : '#EF4444' }}
+                      />
+                    )}
+                    <input
+                      type="file"
+                      hidden
+                      accept=".vcf"
+                      id="vcf-upload-input"
+                      onChange={(e) => handleVCFImport(e.target.files[0])}
+                    />
+                    <Button 
+                      startIcon={<FileUploadOutlinedIcon />} 
+                      className="vcf-import-btn" 
+                      variant="outlined" 
+                      size="small"
+                      component="label" // Make button act as label for hidden input
+                      htmlFor="vcf-upload-input" // Link to hidden input
+                      disabled={isScanningVCF || loading}
+                    >
+                      {isScanningVCF ? "SCANNING..." : "IMPORT .VCF FILE"}
                     </Button>
                   </div>
                   <Grid container spacing={3}>
@@ -822,6 +908,48 @@ const PatientIntake = () => {
                             </React.Fragment>
                           ))}
                         </div>
+                      </ReviewBlock>
+                    </Grid>
+
+                    {/* 4. VCF ANALYSIS BLOCK */}
+                    <Grid item xs={12} md={4}>
+                      <ReviewBlock 
+                        title="VCF ANALYSIS" 
+                        icon={<ScatterPlotIcon />} 
+                        status={vcfAnalysisResult?.success && vcfAnalysisResult?.stats.actionable_found > 0 ? 'valid' : 'error'}
+                        onEdit={() => setCurrentStep(3)}
+                      >
+                        {vcfAnalysisResult?.success ? (
+                          vcfAnalysisResult.stats.actionable_found > 0 ? (
+                            <Box>
+                              <Typography variant="body2">
+                                {vcfAnalysisResult.stats.actionable_found} Actionable Variants Identified
+                              </Typography>
+                              <div className="genomic-review-list">
+                                {Object.values(vcfAnalysisResult.markers).map(marker => (
+                                  <Chip 
+                                    key={marker.coordinate} 
+                                    label={`${marker.gene} (${marker.value})`} 
+                                    size="small" 
+                                    sx={{ m: 0.5, bgcolor: 'rgba(0, 240, 255, 0.1)', color: '#00F0FF' }} 
+                                  />
+                                ))}
+                              </div>
+                            </Box>
+                          ) : (
+                            <div className="error-display">
+                              <ErrorOutlineIcon className="error-icon-big" />
+                              <Typography variant="body2">NO ACTIONABLE VARIANTS</Typography>
+                              <span className="error-sub">No known hotspots detected in VCF.</span>
+                            </div>
+                          )
+                        ) : (
+                          <div className="error-display">
+                            <ErrorOutlineIcon className="error-icon-big" />
+                            <Typography variant="body2">VCF NOT UPLOADED/ANALYSED</Typography>
+                            <span className="error-sub">Please upload a VCF file for analysis.</span>
+                          </div>
+                        )}
                       </ReviewBlock>
                     </Grid>
                   </Grid>

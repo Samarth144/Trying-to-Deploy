@@ -49,7 +49,7 @@ const Footer = () => {
 
         {/* Bottom Metadata Line */}
         <div className="metadata-line">
-          {['Privacy Policy', 'Terms of Service', 'Audit Log', 'GitHub'].map((text) => (
+          {['Privacy Policy', 'Terms of Service', 'GitHub'].map((text) => (
             <a key={text} href="#" className="metadata-link">
               {text}
             </a>

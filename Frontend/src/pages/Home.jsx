@@ -5,6 +5,7 @@ import ScienceIcon from '@mui/icons-material/Science';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useAuth } from '../context/AuthContext';
 import PrecisionCarousel from '../components/PrecisionSlide';
+import ClearanceLevelSelection from '../components/ClearanceLevelSelection';
 import Footer from '../components/Footer';
 import './Home.css';
 
@@ -27,7 +28,7 @@ const intelligenceData = [
   {
     id: "03",
     title: "Genomic Decoder",
-    subtitle: "IDH1 · MGMT · BRCA · HER2",
+    subtitle: "IDH1 · HER2 · EGFR · KRAS · HBV",
     desc: "Automated interpretation of VCF files to map mutations to targeted therapies, identifying drug sensitivity and resistance markers.",
     img: "https://images.unsplash.com/photo-1579165466741-7f35a4755657?auto=format&fit=crop&w=1200&q=80",
   },
@@ -58,10 +59,17 @@ const featuresData = [
   },
   {
     id: "03",
-    title: "Blockchain Audit Ledger",
-    subtitle: "Immutable Logs · Polygon Network",
-    desc: "Immutable, tamper-proof logs of all data access and model versions on the Polygon network for regulatory compliance.",
-    img: "https://images.unsplash.com/photo-1639322537228-f710d846310a?auto=format&fit=crop&w=1200&q=80",
+    title: "Adaptive Pathway Simulator",
+    subtitle: "Longitudinal Projection · Decision Branching",
+    desc: "Simulate complex treatment journeys over 18-24 months, modeling 'what-if' scenarios for response, recurrence, and toxicity management.",
+    img: "https://images.unsplash.com/photo-1504868584819-f8e90526354c?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "04",
+    title: "Evidence-Anchored Reasoning Hub",
+    subtitle: "Semantic Mapping · NCCN Guideline Citations",
+    desc: "Every treatment protocol is anchored to live-retrieved NCCN guidelines and peer-reviewed journals, providing clinicians with a transparent, auditable reasoning chain.",
+    img: "https://images.unsplash.com/photo-1454165833767-027ffea9e77b?auto=format&fit=crop&w=1200&q=80",
   }
 ];
 
@@ -93,15 +101,13 @@ function Home() {
             </p>
           </div>
           <div className="hero-cta">
-            {/* BUTTON 1: THE "SCANNER" (Primary Action) - Restricted to Doctors */}
-            {(isDoctor || !user) && (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/patients" className="btn-scanner">
-                  <ScienceIcon />
-                  Initialize Analysis
-                </Link>
-              </motion.div>
-            )}
+            {/* BUTTON 1: THE "SCANNER" (Primary Action) - Available to all */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link to="/patients" className="btn-scanner">
+                <ScienceIcon />
+                Initialize Analysis
+              </Link>
+            </motion.div>
 
             {/* BUTTON 2: THE "HUD LINK" (Secondary Action) */}
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -139,37 +145,8 @@ function Home() {
         
       </section>
 
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="container">
-          <div className="cta-card">
-            <h2>Get Started with RESONANCE</h2>
-            <p>Choose your role to access the appropriate interface and tools</p>
-
-            <div className="role-cards">
-              <Link to="/login" className="role-card">
-                <h3>👨‍⚕️ Oncologist</h3>
-                <p>Access full clinical decision support tools and patient management</p>
-              </Link>
-
-              <Link to="/login" className="role-card">
-                <h3>🧑‍⚕️ Patient</h3>
-                <p>View personalized treatment pathways and educational resources</p>
-              </Link>
-
-              <Link to="/login" className="role-card">
-                <h3>🔬 Researcher</h3>
-                <p>Explore AI models, datasets, and audit trails</p>
-              </Link>
-
-              <Link to="/login" className="role-card">
-                <h3>🛡️ Admin</h3>
-                <p>Manage users, system logs, and security protocols</p>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Clearance Level Selection Section */}
+      <ClearanceLevelSelection />
 
       <Footer />
     </>

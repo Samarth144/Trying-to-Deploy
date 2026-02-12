@@ -317,68 +317,6 @@
     border-bottom: none;
 }
 
-/* CTA Section */
-.cta-section {
-  padding: 4rem 0;
-  text-align: center;
-}
-
-.cta-card {
-  background: var(--gradient-primary);
-  border-radius: 1.5rem;
-  padding: 4rem;
-  max-width: 800px;
-  margin: 0 auto;
-  color: white;
-}
-
-.cta-card h2 {
-  color: white;
-  margin-bottom: 1rem;
-}
-
-.cta-card p {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.125rem;
-  margin-bottom: 3rem;
-}
-
-.role-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-.role-card {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-radius: 1rem;
-  padding: 2rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-  display: block;
-  border: 1px solid var(--glass-border);
-}
-
-.role-card:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--primary-blue);
-}
-
-.role-card h3 {
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.role-card p {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  margin-bottom: 0;
-}
-
 /* Refactored inline styles */
 .capabilities-list {
     list-style: none;
