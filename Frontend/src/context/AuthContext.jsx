@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import apiClient, { setAuthToken } from '../utils/apiClient';
+import { encryptForStorage, decryptFromStorage } from '../utils/encryption';
 
 const AuthContext = createContext();
 
@@ -10,21 +11,21 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Set base URL for axios
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
   useEffect(() => {
     // Check for token in localStorage on mount
     const checkLoggedIn = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
         try {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          const res = await axios.get('/auth/me');
+          // Decrypt token from secure storage
+          const token = decryptFromStorage(storedToken);
+          setAuthToken(token);
+          const res = await apiClient.get('/auth/me');
           setUser(res.data.data);
         } catch (err) {
+          // Token invalid or expired — clear auth state
           localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
+          setAuthToken(null);
           setUser(null);
         }
       }
@@ -39,11 +40,12 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post('/auth/register', userData);
+      const res = await apiClient.post('/auth/register', userData);
       const { token, ...profile } = res.data.data;
-      
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Encrypt token before storing in localStorage
+      localStorage.setItem('token', encryptForStorage(token));
+      setAuthToken(token);
       setUser(profile);
       return { success: true };
     } catch (err) {
@@ -59,11 +61,12 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post('/auth/login', { email, password });
+      const res = await apiClient.post('/auth/login', { email, password });
       const { token, ...profile } = res.data.data;
 
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Encrypt token before storing in localStorage
+      localStorage.setItem('token', encryptForStorage(token));
+      setAuthToken(token);
       setUser(profile);
       return { success: true };
     } catch (err) {
@@ -77,15 +80,15 @@ export const AuthProvider = ({ children }) => {
   // Logout user
   const logout = () => {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null);
     setUser(null);
   };
 
   // Function to manually set auth state after face login
   const setAuthData = (data) => {
     const { token, ...profile } = data;
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem('token', encryptForStorage(token));
+    setAuthToken(token);
     setUser(profile);
   };
 
@@ -96,7 +99,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    setAuthData, // Export the new function
+    setAuthData,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isDoctor: user?.role === 'oncologist',

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Box, Container, Grid, Typography, Button, IconButton, Chip, TablePagination, CircularProgress,
   TextField, InputAdornment, Menu, MenuItem, Card, CardContent, Avatar
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../utils/apiClient';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -51,31 +51,31 @@ const PatientRow = ({ p, index, onClick }) => {
   const status = p.pathologyAnalysis && Object.keys(p.pathologyAnalysis).length > 0 ? 'Analyzed' : 'Intake';
   const isComplete = status === 'Analyzed';
   const statusColor = isComplete ? colors.green : colors.amber;
-  
+
   const formattedDate = p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   }) : 'N/A';
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: -20 }} 
-      animate={{ opacity: 1, x: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
     >
-      <Box 
+      <Box
         onClick={onClick}
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          p: 2.5, 
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          p: 2.5,
           mb: 1.5,
-          bgcolor: colors.glass, 
+          bgcolor: colors.glass,
           borderRadius: '4px',
           borderLeft: `4px solid ${statusColor}`,
           transition: 'all 0.2s',
           cursor: 'pointer',
-          '&:hover': { 
-            bgcolor: colors.glassHover, 
+          '&:hover': {
+            bgcolor: colors.glassHover,
             transform: 'translateX(5px)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
           }
@@ -94,8 +94,8 @@ const PatientRow = ({ p, index, onClick }) => {
 
         <Box sx={{ width: '30%' }}>
           <Typography variant="body2" sx={{ color: isComplete ? colors.cyan : colors.muted, fontFamily: '"Space Grotesk"' }}>
-            {p.diagnosis 
-              ? (p.diagnosis.toLowerCase().includes('cancer') ? p.diagnosis : `${p.diagnosis} Cancer`) 
+            {p.diagnosis
+              ? (p.diagnosis.toLowerCase().includes('cancer') ? p.diagnosis : `${p.diagnosis} Cancer`)
               : 'Pending Analysis'}
           </Typography>
         </Box>
@@ -107,24 +107,24 @@ const PatientRow = ({ p, index, onClick }) => {
         </Box>
 
         <Box sx={{ width: '15%' }}>
-          <Chip 
-            label={status.toUpperCase()} 
-            size="small" 
-            sx={{ 
-              bgcolor: `${statusColor}20`, 
-              color: statusColor, 
-              fontFamily: '"Rajdhani"', 
+          <Chip
+            label={status.toUpperCase()}
+            size="small"
+            sx={{
+              bgcolor: `${statusColor}20`,
+              color: statusColor,
+              fontFamily: '"Rajdhani"',
               fontWeight: 700,
               border: `1px solid ${statusColor}40`,
               letterSpacing: '1px'
-            }} 
+            }}
           />
         </Box>
 
         <Box sx={{ width: '10%', textAlign: 'right' }}>
-           <IconButton size="small" sx={{ color: colors.teal }}>
-             <ArrowForwardIosIcon fontSize="inherit" />
-           </IconButton>
+          <IconButton size="small" sx={{ color: colors.teal }}>
+            <ArrowForwardIosIcon fontSize="inherit" />
+          </IconButton>
         </Box>
       </Box>
     </motion.div>
@@ -147,7 +147,7 @@ const Dashboard = () => {
   const [dbStats, setDbStats] = useState([]);
   const [dbPatients, setDbPatients] = useState([]);
   const [patientData, setPatientData] = useState(null);
-  
+
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -158,7 +158,7 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const statsRes = await axios.get('/dashboard/stats');
+        const statsRes = await apiClient.get('/dashboard/stats');
         if (statsRes.data.success) {
           const s = statsRes.data.data.overview;
           setDbStats([
@@ -166,10 +166,10 @@ const Dashboard = () => {
             { label: 'Analyses', value: String(s.totalAnalyses).padStart(2, '0'), unit: 'COMPLETED' },
             { label: isPatient ? 'Active Plans' : 'Avg Confidence', value: isPatient ? String(s.activeTreatments).padStart(2, '0') : `${s.avgConfidence}%`, unit: isPatient ? 'TREATMENT' : 'AI SCORE' },
           ]);
-          
+
           if (isPatient && statsRes.data.data.patientId) {
             const p = statsRes.data.data.patientRecord;
-            setPatientData({ 
+            setPatientData({
               id: statsRes.data.data.patientId,
               mrn: p?.mrn,
               dob: p?.dob,
@@ -180,7 +180,7 @@ const Dashboard = () => {
         }
 
         if (!isPatient) {
-          const patientsRes = await axios.get('/dashboard/recent-patients?limit=100');
+          const patientsRes = await apiClient.get('/dashboard/recent-patients?limit=100');
           if (patientsRes.data.success) {
             setDbPatients(patientsRes.data.data);
           }
@@ -209,9 +209,9 @@ const Dashboard = () => {
     const mrn = p.mrn.toLowerCase();
     const diagnosis = (p.diagnosis || '').toLowerCase();
     const searchMatch = fullName.includes(searchTerm.toLowerCase()) || mrn.includes(searchTerm.toLowerCase()) || diagnosis.includes(searchTerm.toLowerCase());
-    
+
     const filterMatch = activeFilter === 'All' || p.cancerType === activeFilter;
-    
+
     return searchMatch && filterMatch;
   });
 
@@ -238,11 +238,11 @@ const Dashboard = () => {
             </Typography>
           </Box>
 
-          <Box sx={{ 
-            bgcolor: 'rgba(22, 32, 50, 0.6)', 
-            border: `1px solid ${colors.border}`, 
-            borderRadius: '12px', 
-            p: 4, 
+          <Box sx={{
+            bgcolor: 'rgba(22, 32, 50, 0.6)',
+            border: `1px solid ${colors.border}`,
+            borderRadius: '12px',
+            p: 4,
             mb: 6,
             display: 'flex',
             flexWrap: 'wrap',
@@ -252,8 +252,8 @@ const Dashboard = () => {
           }}>
             {loading ? (
               <Box sx={{ display: 'flex', alignItems: 'center', px: 3, gap: 2 }}>
-                  <CircularProgress size={20} sx={{ color: colors.teal }} />
-                  <Typography variant="caption" sx={{ color: colors.muted }}>Loading your health metrics...</Typography>
+                <CircularProgress size={20} sx={{ color: colors.teal }} />
+                <Typography variant="caption" sx={{ color: colors.muted }}>Loading your health metrics...</Typography>
               </Box>
             ) : dbStats.map((stat) => (
               <StatItem key={stat.label} {...stat} />
@@ -263,9 +263,9 @@ const Dashboard = () => {
           <Grid container spacing={4}>
             {/* NEW: PERSONAL IDENTITY CARD */}
             <Grid item xs={12}>
-              <Card sx={{ 
-                bgcolor: 'rgba(5, 151, 137, 0.1)', 
-                border: `1px solid ${colors.teal}`, 
+              <Card sx={{
+                bgcolor: 'rgba(5, 151, 137, 0.1)',
+                border: `1px solid ${colors.teal}`,
                 borderRadius: '12px',
                 position: 'relative',
                 overflow: 'hidden'
@@ -319,8 +319,8 @@ const Dashboard = () => {
                   <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
                     Review your latest MRI segmentations and histopathology reports generated by the AI engine.
                   </Typography>
-                  <Button 
-                    fullWidth 
+                  <Button
+                    fullWidth
                     variant="outlined"
                     disabled={!patientData}
                     onClick={() => navigate(`/tumor-3d?patientId=${patientData.id}`)}
@@ -342,8 +342,8 @@ const Dashboard = () => {
                   <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
                     Your personalized treatment protocols and evidence-based clinical recommendations.
                   </Typography>
-                  <Button 
-                    fullWidth 
+                  <Button
+                    fullWidth
                     variant="outlined"
                     disabled={!patientData}
                     onClick={() => navigate(`/treatment-plan?patientId=${patientData.id}`)}
@@ -365,8 +365,8 @@ const Dashboard = () => {
                   <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
                     Predicted survival rates, side-effect profiles, and quality-of-life projections.
                   </Typography>
-                  <Button 
-                    fullWidth 
+                  <Button
+                    fullWidth
                     variant="outlined"
                     disabled={!patientData}
                     onClick={() => navigate(`/outcome-prediction?patientId=${patientData.id}`)}
@@ -387,23 +387,23 @@ const Dashboard = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
       <Container maxWidth="xl">
-        
+
         <Box sx={{ mb: 6 }}>
           <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
             {isAdmin ? 'SYSTEM ADMINISTRATION' : 'CLINICAL DASHBOARD'}
           </Typography>
           <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
-            {isAdmin 
-              ? 'Oversee system-wide clinical data and platform users.' 
+            {isAdmin
+              ? 'Oversee system-wide clinical data and platform users.'
               : 'Manage patient cohorts and view AI-driven analysis results.'}
           </Typography>
         </Box>
 
-        <Box sx={{ 
-          bgcolor: 'rgba(22, 32, 50, 0.6)', 
-          border: `1px solid ${colors.border}`, 
-          borderRadius: '12px', 
-          p: 4, 
+        <Box sx={{
+          bgcolor: 'rgba(22, 32, 50, 0.6)',
+          border: `1px solid ${colors.border}`,
+          borderRadius: '12px',
+          p: 4,
           mb: 6,
           display: 'flex',
           flexWrap: 'wrap',
@@ -414,8 +414,8 @@ const Dashboard = () => {
         }}>
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', px: 3, gap: 2 }}>
-                <CircularProgress size={20} sx={{ color: colors.teal }} />
-                <Typography variant="caption" sx={{ color: colors.muted }}>Synchronizing Clinical Metrics...</Typography>
+              <CircularProgress size={20} sx={{ color: colors.teal }} />
+              <Typography variant="caption" sx={{ color: colors.muted }}>Synchronizing Clinical Metrics...</Typography>
             </Box>
           ) : dbStats.map((stat) => (
             <StatItem key={stat.label} {...stat} />
@@ -428,20 +428,20 @@ const Dashboard = () => {
               PATIENT CASES
             </Typography>
             {activeFilter !== 'All' && (
-              <Chip 
-                label={activeFilter} 
-                onDelete={() => setActiveFilter('All')} 
+              <Chip
+                label={activeFilter}
+                onDelete={() => setActiveFilter('All')}
                 size="small"
                 sx={{ bgcolor: `${colors.cyan}20`, color: colors.cyan, fontFamily: '"Rajdhani"', fontWeight: 700 }}
               />
             )}
           </Box>
-          
+
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <AnimatePresence>
               {showSearch && (
                 <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 250, opacity: 1 }} exit={{ width: 0, opacity: 0 }}>
-                  <TextField 
+                  <TextField
                     size="small"
                     placeholder="Search Name, MRN..."
                     value={searchTerm}
@@ -456,9 +456,9 @@ const Dashboard = () => {
                           </IconButton>
                         </InputAdornment>
                       ),
-                      sx: { 
-                        bgcolor: 'rgba(255,255,255,0.05)', 
-                        color: '#fff', 
+                      sx: {
+                        bgcolor: 'rgba(255,255,255,0.05)',
+                        color: '#fff',
                         borderRadius: '4px',
                         fontFamily: '"Space Grotesk"',
                         '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' }
@@ -480,23 +480,23 @@ const Dashboard = () => {
             </IconButton>
 
             <Menu anchorEl={filterAnchor} open={Boolean(filterAnchor)} onClose={() => handleFilterClose()} PaperProps={{ sx: { bgcolor: colors.bg, border: `1px solid ${colors.border}`, color: '#fff' } }}>
-               <MenuItem onClick={() => handleFilterClose('All')} sx={{ fontFamily: '"Rajdhani"', fontWeight: 600 }}>ALL TYPES</MenuItem>
-               {['Brain', 'Breast', 'Lung', 'Liver', 'Pancreas'].map(type => (
-                 <MenuItem key={type} onClick={() => handleFilterClose(type)} sx={{ fontFamily: '"Rajdhani"', fontWeight: 600 }}>{type.toUpperCase()}</MenuItem>
-               ))}
+              <MenuItem onClick={() => handleFilterClose('All')} sx={{ fontFamily: '"Rajdhani"', fontWeight: 600 }}>ALL TYPES</MenuItem>
+              {['Brain', 'Breast', 'Lung', 'Liver', 'Pancreas'].map(type => (
+                <MenuItem key={type} onClick={() => handleFilterClose(type)} sx={{ fontFamily: '"Rajdhani"', fontWeight: 600 }}>{type.toUpperCase()}</MenuItem>
+              ))}
             </Menu>
 
             {isDoctor && (
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/patients')}
-                sx={{ 
-                  bgcolor: colors.teal, 
-                  color: '#fff', 
-                  fontFamily: '"Space Grotesk"', 
+                sx={{
+                  bgcolor: colors.teal,
+                  color: '#fff',
+                  fontFamily: '"Space Grotesk"',
                   fontWeight: 700,
-                  '&:hover': { bgcolor: colors.cyan, color: '#000' } 
+                  '&:hover': { bgcolor: colors.cyan, color: '#000' }
                 }}
               >
                 ADD NEW PATIENT
@@ -515,20 +515,20 @@ const Dashboard = () => {
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minHeight: '200px' }}>
           {loading ? (
-             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                <CircularProgress sx={{ color: colors.teal }} />
-             </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress sx={{ color: colors.teal }} />
+            </Box>
           ) : displayedPatients.length === 0 ? (
-             <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                <Typography sx={{ color: colors.muted }}>No clinical records match your search criteria.</Typography>
-             </Box>
+            <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+              <Typography sx={{ color: colors.muted }}>No clinical records match your search criteria.</Typography>
+            </Box>
           ) : (
             displayedPatients.map((p, index) => (
-              <PatientRow 
-                key={p.id} 
-                p={p} 
-                index={index} 
-                onClick={() => navigate(`/patient-profile?patientId=${p.id}`)} 
+              <PatientRow
+                key={p.id}
+                p={p}
+                index={index}
+                onClick={() => navigate(`/patient-profile?patientId=${p.id}`)}
               />
             ))
           )}

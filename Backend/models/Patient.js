@@ -1,6 +1,12 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 const User = require('./User');
+const { encryptField, decryptField } = require('../utils/encryption');
+
+// ─── Sensitive Fields Configuration ─────────────────────────────────────────
+// Fields that will be AES-256-GCM encrypted at rest in the database.
+const ENCRYPTED_STRING_FIELDS = ['email', 'phone', 'medicalHistory'];
+const ENCRYPTED_JSON_FIELDS = ['genomicProfile', 'pathologyAnalysis', 'currentMedications', 'mriPaths'];
 
 const Patient = sequelize.define('Patient', {
     id: {
@@ -30,13 +36,12 @@ const Patient = sequelize.define('Patient', {
         allowNull: false
     },
     email: {
-        type: DataTypes.STRING,
-        validate: {
-            isEmail: true
-        }
+        type: DataTypes.TEXT, // Changed to TEXT to accommodate encrypted strings
+        allowNull: true
     },
     phone: {
-        type: DataTypes.STRING
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     diagnosis: {
         type: DataTypes.STRING,
@@ -55,8 +60,8 @@ const Patient = sequelize.define('Patient', {
         allowNull: true
     },
     genomicProfile: {
-        type: DataTypes.JSONB,
-        defaultValue: {}
+        type: DataTypes.TEXT, // Changed to TEXT for encrypted JSON storage
+        defaultValue: '{}'
     },
     kps: {
         type: DataTypes.INTEGER,
@@ -78,8 +83,8 @@ const Patient = sequelize.define('Patient', {
         type: DataTypes.TEXT
     },
     currentMedications: {
-        type: DataTypes.JSONB, // Store array of objects as JSONB
-        defaultValue: []
+        type: DataTypes.TEXT, // Changed to TEXT for encrypted JSON storage
+        defaultValue: '[]'
     },
     allergies: {
         type: DataTypes.ARRAY(DataTypes.STRING),
@@ -90,12 +95,12 @@ const Patient = sequelize.define('Patient', {
         allowNull: true
     },
     mriPaths: {
-        type: DataTypes.JSONB,
-        defaultValue: {}
+        type: DataTypes.TEXT, // Changed to TEXT for encrypted JSON storage
+        defaultValue: '{}'
     },
     pathologyAnalysis: {
-        type: DataTypes.JSONB,
-        defaultValue: {}
+        type: DataTypes.TEXT, // Changed to TEXT for encrypted JSON storage
+        defaultValue: '{}'
     },
     vcfAnalysis: {
         type: DataTypes.JSONB,
@@ -107,6 +112,71 @@ const Patient = sequelize.define('Patient', {
         references: {
             model: 'Users',
             key: 'id'
+        }
+    }
+}, {
+    hooks: {
+        // ──── Encrypt sensitive fields before saving to database ────────────
+        beforeCreate: (patient) => {
+            try {
+                for (const field of ENCRYPTED_STRING_FIELDS) {
+                    if (patient[field]) {
+                        patient[field] = encryptField(patient[field]);
+                    }
+                }
+                for (const field of ENCRYPTED_JSON_FIELDS) {
+                    if (patient[field] && typeof patient[field] === 'object') {
+                        patient[field] = encryptField(patient[field]);
+                    }
+                }
+            } catch (err) {
+                console.error('Encryption error on create:', err.message);
+            }
+        },
+        beforeUpdate: (patient) => {
+            try {
+                for (const field of ENCRYPTED_STRING_FIELDS) {
+                    if (patient.changed(field) && patient[field]) {
+                        patient[field] = encryptField(patient[field]);
+                    }
+                }
+                for (const field of ENCRYPTED_JSON_FIELDS) {
+                    if (patient.changed(field) && patient[field]) {
+                        const val = patient[field];
+                        if (typeof val === 'object') {
+                            patient[field] = encryptField(val);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Encryption error on update:', err.message);
+            }
+        },
+        // ──── Decrypt sensitive fields after reading from database ──────────
+        afterFind: (result) => {
+            try {
+                const decryptPatient = (patient) => {
+                    if (!patient || !patient.dataValues) return;
+                    for (const field of ENCRYPTED_STRING_FIELDS) {
+                        if (patient.dataValues[field]) {
+                            patient.dataValues[field] = decryptField(patient.dataValues[field]);
+                        }
+                    }
+                    for (const field of ENCRYPTED_JSON_FIELDS) {
+                        if (patient.dataValues[field]) {
+                            patient.dataValues[field] = decryptField(patient.dataValues[field], true);
+                        }
+                    }
+                };
+
+                if (Array.isArray(result)) {
+                    result.forEach(decryptPatient);
+                } else if (result) {
+                    decryptPatient(result);
+                }
+            } catch (err) {
+                console.error('Decryption error on find:', err.message);
+            }
         }
     }
 });
