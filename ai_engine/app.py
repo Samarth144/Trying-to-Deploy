@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from rule_engine import run_rules
 from llm.llm_chain import generate_treatment_plan, predict_outcomes
+from utils.vcf_parser import parse_vcf # ADDED VCF PARSER IMPORT
 import re
 import random
 import pdfplumber
@@ -508,6 +509,20 @@ def predict_side_effects_route():
 
     return jsonify(formatted_outcome)
 
+
+@app.route('/process_vcf', methods=['POST'])
+def process_vcf_route():
+    data = request.get_json()
+    if not data or 'file_path' not in data:
+        return jsonify({"error": "No VCF file path provided"}), 400
+
+    file_path = data['file_path']
+    result = parse_vcf(file_path)
+
+    if not result.get("success"):
+        return jsonify({"error": result.get("error", "VCF Parsing failed")}), 500
+
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	10000	rs123	A	G	50	PASS	DP=100;AF=0.05
+2	208248388	.	G	A	100	PASS	DP=500;AF=0.48;ANN=IDH1(p.R132H)
+3	100000	rs456	C	T	80	PASS	DP=200;AF=0.12
+X	5000000	.	T	C	60	PASS	DP=150;AF=0.25

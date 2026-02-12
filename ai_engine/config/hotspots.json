@@ -1,0 +1,15 @@
+{
+    "17:41197708": {"gene": "BRCA1", "marker": "brca", "value": "Mutated"},
+    "2:208248388": {"gene": "IDH1", "marker": "idh1", "value": "Mutated"},
+    "7:55242465": {"gene": "EGFR", "marker": "egfr", "value": "Mutated"},
+    "12:25398284": {"gene": "KRAS", "marker": "kras", "value": "Mutated"},
+    "17:7577121": {"gene": "TP53", "marker": "tp53", "value": "Mutated"},
+    "10:89692905": {"gene": "PTEN", "marker": "pten", "value": "Lost"},
+    "3:178936091": {"gene": "PIK3CA", "marker": "pik3ca", "value": "Mutated"},
+    "2:29443695": {"gene": "ALK", "marker": "alk", "value": "Positive"},
+    "6:117642557": {"gene": "ROS1", "marker": "ros1", "value": "Positive"},
+    "17:37880978": {"gene": "ERBB2", "marker": "her2", "value": "Positive"},
+    "9:21971016": {"gene": "CDKN2A", "marker": "cdkn2a", "value": "Lost"},
+    "18:48591888": {"gene": "SMAD4", "marker": "smad4", "value": "Lost"},
+    "3:41266015": {"gene": "CTNNB1", "marker": "ctnnb1", "value": "Mutated"}
+}

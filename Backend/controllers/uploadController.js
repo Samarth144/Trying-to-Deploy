@@ -34,7 +34,19 @@ const uploadHistopathologyReport = async (req, res) => {
   });
 };
 
+const uploadVCF = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No VCF file uploaded.' });
+  }
+
+  res.status(200).json({
+    message: 'VCF File uploaded successfully.',
+    filename: req.file.filename
+  });
+};
+
 module.exports = {
   uploadHistopathologyReport,
-  uploadMRI
+  uploadMRI,
+  uploadVCF
 };

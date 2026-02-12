@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##source=Simulated_TCGA_BRCA
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TUMOR
+chr17	43045729	.	C	T	.	PASS	GENE=BRCA1;TYPE=Frameshift;AA=p.E23fs;AF=0.558	GT:AD:DP	0/1:38,48:86
+chr3	178936091	.	G	A	.	PASS	GENE=PIK3CA;TYPE=Missense;AA=p.H1047R;AF=0.327	GT:AD:DP	0/1:72,35:107
+chr17	7577538	.	C	T	.	PASS	GENE=TP53;TYPE=Missense;AA=p.R273H;AF=0.284	GT:AD:DP	0/1:68,27:95

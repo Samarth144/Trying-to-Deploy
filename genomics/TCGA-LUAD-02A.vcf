@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##source=Simulated_TCGA_LUAD
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TUMOR
+chr7	55249071	.	G	A	.	PASS	GENE=EGFR;TYPE=Missense;AA=p.L858R;AF=0.505	GT:AD:DP	0/1:52,53:105
+chr12	25398284	.	G	T	.	PASS	GENE=KRAS;TYPE=Missense;AA=p.G12C;AF=0.5	GT:AD:DP	0/1:55,55:110
+chr17	7579472	.	C	T	.	PASS	GENE=TP53;TYPE=Missense;AA=p.R175H;AF=0.492	GT:AD:DP	0/1:61,59:120

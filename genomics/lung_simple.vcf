@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+7	55242465	.	T	A	100	PASS	DP=900;AF=0.60;ANN=EGFR(p.L858R)
+12	25398284	.	G	T	100	PASS	DP=850;AF=0.55;ANN=KRAS(p.G12C)
+10	98765432	.	A	G	70	PASS	DP=250;AF=0.20
