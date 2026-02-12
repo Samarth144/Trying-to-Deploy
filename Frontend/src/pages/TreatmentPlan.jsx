@@ -95,6 +95,9 @@ function TreatmentPlan() {
         cancer_type: cancerType.toLowerCase(), 
         patientId: pid,
         forceRefresh,
+        // Include full patient data objects for AI
+        mriPaths: patientData.mriPaths,
+        vcfAnalysis: patientData.vcfAnalysis,
         ...patientData 
     };
     
@@ -170,6 +173,10 @@ function TreatmentPlan() {
                     if (pathData.stage) newData.stage = pathData.stage;
                     if (pathData.age) newData.age = pathData.age;
                     if (p.kps) newData.KPS = p.kps;
+                    
+                    // Add mriPaths and vcfAnalysis
+                    newData.mriPaths = p.mriPaths;
+                    newData.vcfAnalysis = p.vcfAnalysis;
 
                     // Type Specific Mapping
                     if (type === 'Breast') {
@@ -509,7 +516,9 @@ function TreatmentPlan() {
                     <label className="param-label">CANCER TYPE</label>
                     <div className="param-value highlight">{cancerType.toUpperCase()}</div>
                 </div>
-                {Object.entries(patientData).map(([key, val]) => (
+                {Object.entries(patientData)
+                    .filter(([key]) => key !== 'mriPaths' && key !== 'vcfAnalysis')
+                    .map(([key, val]) => (
                     <div className="param-display" key={key}>
                         <label className="param-label">{key.toUpperCase()}</label>
                         <div className="param-value">{String(val).toUpperCase()}</div>

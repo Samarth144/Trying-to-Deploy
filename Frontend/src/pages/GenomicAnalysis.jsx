@@ -205,6 +205,7 @@ const GenomicAnalysis = () => {
       if (res.data.success) {
         const p = res.data.data;
         setPatientData(p);
+        console.log("Fetched Patient Data:", p); // Debugging line
         const config = MARKER_CONFIG[p.cancerType] || MARKER_CONFIG.Brain;
         setMarkers(config.map(m => ({ ...m, status: 'Unknown', sens: 0 })));
       }
@@ -216,22 +217,86 @@ const GenomicAnalysis = () => {
   const handleAnalyze = () => {
     setAnalyzing(true);
     setTimeout(() => {
-      const config = MARKER_CONFIG[patientData.cancerType] || MARKER_CONFIG.Brain;
-      const results = config.map(m => ({
-        ...m,
-        status: patientData.genomicProfile[m.id] || 'Unknown',
-        sens: 85 + Math.floor(Math.random() * 10)
-      }));
+      const config = [...(MARKER_CONFIG[patientData.cancerType] || MARKER_CONFIG.Brain)];
+      
+      // Use vcfAnalysis markers if available, else fallback to genomicProfile
+      const vcfMarkers = patientData.vcfAnalysis?.markers || {};
+      
+      // Add extra markers found in VCF that are not in the standard config
+      Object.keys(vcfMarkers).forEach(vKey => {
+        if (!config.some(m => m.id === vKey)) {
+          config.push({
+            id: vKey,
+            label: vcfMarkers[vKey].label || vKey.toUpperCase(),
+            sub: vcfMarkers[vKey].sub || 'Extracted from VCF'
+          });
+        }
+      });
+      
+      const results = config.map(m => {
+        let status = 'Unknown';
+        if (vcfMarkers[m.id]) {
+            status = vcfMarkers[m.id].value;
+        } else {
+            status = patientData.genomicProfile[m.id] || 'Unknown';
+        }
+        
+        return {
+          ...m,
+          status: status,
+          sens: 85 + Math.floor(Math.random() * 10)
+        };
+      });
       setMarkers(results);
 
       const typeLib = VARIANT_LIBRARY[patientData.cancerType] || VARIANT_LIBRARY.Brain;
-      const calculatedVariants = [];
+      let calculatedVariants = [];
       
+      // 1. Add variants from VCF analysis if they exist (highest priority)
+      if (patientData.vcfAnalysis?.variants && patientData.vcfAnalysis.variants.length > 0) {
+        patientData.vcfAnalysis.variants.forEach(v => {
+            calculatedVariants.push({
+                gene: v.gene,
+                variant: v.change,
+                type: v.type || 'Somatic',
+                freq: v.depth ? `${v.depth}x` : '---',
+                action: v.clinical_significance === 'Pathogenic' ? 'HIGH' : 'MEDIUM',
+                sig: v.impact || 'Variant of interest'
+            });
+        });
+      }
+
+      // 2. Add specific markers from VCF analysis (from hotspot map) that are not already in variants
+      const vcfMarkersAsVariants = Object.entries(patientData.vcfAnalysis?.markers || {}).map(([markerId, markerData]) => {
+          return {
+              gene: markerData.gene || markerId.toUpperCase(),
+              variant: markerData.value, // e.g., 'R132H', 'Promoter Meth'
+              type: 'Biomarker',
+              freq: markerData.allele_freq ? `${Math.round(markerData.allele_freq * 100)}%` : '---',
+              action: markerData.significance === 'Pathogenic' ? 'HIGH' : (markerData.significance === 'VUS (Low Frequency)' ? 'MEDIUM' : 'LOW'),
+              sig: markerData.significance || 'Clinical Biomarker'
+          };
+      });
+
+      vcfMarkersAsVariants.forEach(vcv => {
+          if (!calculatedVariants.some(cv => cv.gene === vcv.gene && cv.variant === vcv.variant)) {
+              calculatedVariants.push(vcv);
+          }
+      });
+      
+      // 3. Add variants from genomicProfile (legacy/manual), avoiding duplicates from VCF
       if (patientData.genomicProfile) {
         Object.entries(patientData.genomicProfile).forEach(([key, status]) => {
             const geneEntry = typeLib[key.toLowerCase()]; 
             if (geneEntry && geneEntry[status]) {
-                calculatedVariants.push(geneEntry[status]);
+                // Check if already added from VCF (either variants or markers) to avoid duplicates
+                const isDuplicate = calculatedVariants.some(v => 
+                    v.gene.toLowerCase() === geneEntry[status].gene.toLowerCase() && 
+                    v.variant.toLowerCase() === geneEntry[status].variant.toLowerCase()
+                );
+                if (!isDuplicate) {
+                    calculatedVariants.push(geneEntry[status]);
+                }
             }
         });
       }
@@ -287,14 +352,17 @@ const GenomicAnalysis = () => {
           newSubtypeLabels = ['Luminal A', 'Luminal B', 'HER2-Enriched', 'Basal-like'];
           newDrugLabels = ['Trastuzumab', 'Tamoxifen', 'Doxorubicin', 'Paclitaxel', 'Pembrolizumab'];
 
-          if (patientData.genomicProfile.her2 === 'Positive') {
+          const vcfHer2 = patientData.vcfAnalysis?.markers?.her2?.value;
+          const vcfEr = patientData.vcfAnalysis?.markers?.er?.value;
+          
+          if (vcfHer2 === 'Positive' || patientData.genomicProfile.her2 === 'Positive') {
              newSubtypeData = [10, 10, 75, 5]; 
              newDrugData = [98, 30, 85, 80, 45]; 
-          } else if (patientData.genomicProfile.er === 'Positive') {
+          } else if (vcfEr === 'Positive' || patientData.genomicProfile.er === 'Positive') {
              newSubtypeData = [65, 25, 5, 5]; 
              newDrugData = [5, 95, 45, 50, 20]; 
           } else {
-             newSubtypeData = [10, 10, 10, 70]; 
+             newSubtypeData = [10, 10, 10, 70]; // Triple Negative like
              newDrugData = [5, 10, 92, 90, 85]; 
           }
       }
@@ -302,10 +370,13 @@ const GenomicAnalysis = () => {
           newSubtypeLabels = ['Adenocarcinoma', 'Squamous Cell', 'Large Cell', 'Neuroendocrine'];
           newDrugLabels = ['Osimertinib', 'Cisplatin', 'Pembrolizumab', 'Docetaxel', 'Bevacizumab'];
 
-          if (patientData.genomicProfile.egfr === 'Mutated') {
+          const vcfEgfr = patientData.vcfAnalysis?.markers?.egfr?.value;
+          const vcfAlk = patientData.vcfAnalysis?.markers?.alk?.value;
+
+          if (vcfEgfr === 'Mutated' || patientData.genomicProfile.egfr === 'Mutated') {
               newSubtypeData = [85, 5, 5, 5]; 
               newDrugData = [96, 45, 30, 50, 65]; 
-          } else if (patientData.genomicProfile.alk === 'Positive') {
+          } else if (vcfAlk === 'Positive' || patientData.genomicProfile.alk === 'Positive') {
               newSubtypeData = [80, 10, 5, 5];
               newDrugLabels[0] = 'Alectinib'; 
               newDrugData = [95, 50, 40, 55, 60];
@@ -318,7 +389,8 @@ const GenomicAnalysis = () => {
           newSubtypeLabels = ['Proliferative', 'Non-Proliferative', 'Stem-Cell', 'Unclassified'];
           newDrugLabels = ['Sorafenib', 'Lenvatinib', 'Atezolizumab', 'Bevacizumab', 'Gemcitabine'];
 
-          if (patientData.genomicProfile.afp === 'Very High' || patientData.genomicProfile.afp === 'Elevated') {
+          const vcfAfp = patientData.vcfAnalysis?.markers?.afp?.value;
+          if (vcfAfp === 'Very High' || vcfAfp === 'Elevated' || patientData.genomicProfile.afp === 'Very High' || patientData.genomicProfile.afp === 'Elevated') {
               newSubtypeData = [75, 10, 10, 5]; 
               newDrugData = [50, 60, 90, 85, 40]; 
           } else {
@@ -330,7 +402,8 @@ const GenomicAnalysis = () => {
           newSubtypeLabels = ['Basal-like', 'Classical', 'Exocrine', 'Unclassified'];
           newDrugLabels = ['Olaparib', 'Gemcitabine', 'FOLFIRINOX', 'Paclitaxel', 'Erlotinib'];
 
-          if (patientData.genomicProfile.brca === 'Mutated') {
+          const vcfBrca = patientData.vcfAnalysis?.markers?.brca?.value;
+          if (vcfBrca === 'Mutated' || patientData.genomicProfile.brca === 'Mutated') {
               newSubtypeData = [20, 60, 15, 5]; 
               newDrugData = [95, 75, 80, 45, 30]; 
           } else {
@@ -413,6 +486,59 @@ const GenomicAnalysis = () => {
         <AnimatePresence>
           {showResults && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              
+              {/* VCF DATA SUMMARY SECTION - NOW INSIDE showResults */}
+              {patientData?.vcfAnalysis && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ marginBottom: '48px', padding: '0px 0px' }}>
+                        <Box className="variant-panel" sx={{ p: 4, bgcolor: 'rgba(0, 240, 255, 0.03)', border: '1px solid rgba(0, 240, 255, 0.15)' }}>
+                            <Grid container spacing={4} alignItems="center">
+                                <Grid item xs={12} md={3}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="overline" sx={{ color: colors.cyan, fontWeight: 700, letterSpacing: '2px' }}>VCF INSIGHTS</Typography>
+                                        <Typography variant="h3" sx={{ color: '#fff', fontFamily: 'Rajdhani', fontWeight: 800 }}>
+                                            {patientData.vcfAnalysis.stats?.actionable_found || 0}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: colors.muted }}>Actionable Variants</Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} md={9}>
+                                    <Grid container spacing={2}>
+                                                                        <Grid item xs={6} sm={3}>
+                                                                            <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
+                                                                                <Typography variant="h6" sx={{ color: colors.purple }}>{patientData.vcfAnalysis.stats?.total_vcf_rows || 0}</Typography>
+                                                                                <Typography variant="caption" sx={{ color: colors.muted }}>Total Variants</Typography>
+                                                                            </Box>
+                                                                        </Grid>
+                                                                        <Grid item xs={6} sm={3}>
+                                                                            <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
+                                                                                <Typography variant="h6" sx={{ color: colors.cyan }}>{patientData.vcfAnalysis.stats?.high_impact || 0}</Typography>
+                                                                                <Typography variant="caption" sx={{ color: colors.muted }}>High Impact</Typography>
+                                                                            </Box>
+                                                                        </Grid>
+                                                                        <Grid item xs={6} sm={3}>
+                                                                            <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
+                                                                                <Typography variant="h6" sx={{ color: colors.amber }}>{patientData.vcfAnalysis.stats?.med_impact || 0}</Typography>
+                                                                                <Typography variant="caption" sx={{ color: colors.muted }}>Med Impact</Typography>
+                                                                            </Box>
+                                                                        </Grid>
+                                                                        <Grid item xs={6} sm={3}>
+                                                                            <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
+                                                                                <Typography variant="h6" sx={{ color: colors.muted }}>{patientData.vcfAnalysis.stats?.low_impact || 0}</Typography>
+                                                                                <Typography variant="caption" sx={{ color: colors.muted }}>Low Impact</Typography>
+                                                                            </Box>
+                                                                        </Grid>                                    </Grid>
+                                    <Box sx={{ mt: 3 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="caption" sx={{ color: colors.muted }}>GENOMIC SEQUENCING PROGRESS</Typography>
+                                            <Typography variant="caption" sx={{ color: colors.cyan }}>COMPLETE</Typography>
+                                        </Box>
+                                        <LinearProgress variant="determinate" value={100} sx={{ height: 6, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.05)', '& .MuiLinearProgress-bar': { bgcolor: colors.cyan } }} />
+                                    </Box>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                  </motion.div>
+              )}
               
               <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
                 <Grid item>
@@ -528,17 +654,17 @@ const GenomicAnalysis = () => {
                     
                     <Typography variant="h4" className="summary-diagnosis-title">
                       {patientData.cancerType === 'Brain' ? (
-                          patientData.genomicProfile.idh1 === 'Mutated' ? 'IDH-Mutant Astrocytoma' : 'IDH-Wildtype Glioblastoma'
+                          (patientData.vcfAnalysis?.markers?.idh1?.value === 'Mutated' || patientData.genomicProfile.idh1 === 'Mutated') ? 'IDH-Mutant Astrocytoma' : 'IDH-Wildtype Glioblastoma'
                       ) : patientData.cancerType === 'Breast' ? (
-                          patientData.genomicProfile.her2 === 'Positive' ? 'HER2-Positive Carcinoma' : 'Invasive Ductal Carcinoma'
+                          (patientData.vcfAnalysis?.markers?.her2?.value === 'Positive' || patientData.genomicProfile.her2 === 'Positive') ? 'HER2-Positive Carcinoma' : 'Invasive Ductal Carcinoma'
                       ) : patientData.cancerType === 'Lung' ? (
-                          patientData.genomicProfile.egfr === 'Mutated' ? 'EGFR-Mutant NSCLC' : 'Non-Small Cell Lung Ca'
+                          (patientData.vcfAnalysis?.markers?.egfr?.value === 'Mutated' || patientData.genomicProfile.egfr === 'Mutated') ? 'EGFR-Mutant NSCLC' : 'Non-Small Cell Lung Ca'
                       ) : `${patientData.cancerType} Malignancy`}
                     </Typography>
 
                     <Typography variant="body2" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mb: 4, fontWeight: 600 }}>
                       {patientData.cancerType === 'Brain' ? 'WHO CNS5 GRADE 4 • ' : 'MOLECULAR SUBTYPE • '}
-                      {patientData.genomicProfile.idh1 === 'Mutated' ? 'FAVORABLE PROGNOSIS' : 'AGGRESSIVE PHENOTYPE'}
+                      {(patientData.vcfAnalysis?.markers?.idh1?.value === 'Mutated' || patientData.genomicProfile.idh1 === 'Mutated') ? 'FAVORABLE PROGNOSIS' : 'AGGRESSIVE PHENOTYPE'}
                     </Typography>
                     
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'center' }}>
@@ -565,22 +691,29 @@ const GenomicAnalysis = () => {
                                  const age = new Date().getFullYear() - new Date(patientData.dateOfBirth).getFullYear();
                                  const kps = patientData.kps || 100;
                                  
+                                 const idh1Status = patientData.vcfAnalysis?.markers?.idh1?.value || patientData.genomicProfile.idh1;
+                                 const mgmtStatus = patientData.vcfAnalysis?.markers?.mgmt?.value || patientData.genomicProfile.mgmt;
+                                 const egfrStatus = patientData.vcfAnalysis?.markers?.egfr?.value || patientData.genomicProfile.egfr;
+                                 const alkStatus = patientData.vcfAnalysis?.markers?.alk?.value || patientData.genomicProfile.alk;
+                                 const her2Status = patientData.vcfAnalysis?.markers?.her2?.value || patientData.genomicProfile.her2;
+                                 const erStatus = patientData.vcfAnalysis?.markers?.er?.value || patientData.genomicProfile.er;
+
                                  if (patientData.cancerType === 'Brain') {
-                                     if (patientData.genomicProfile.mgmt === 'Unknown') return "Biomarker status pending. Provisional Standard Stupp Protocol advised pending methylation results.";
-                                     if (patientData.genomicProfile.mgmt === 'Unmethylated') return "TMZ resistance likely. Prioritize clinical trials or consider Regorafenib/Lomustine based on progression.";
-                                     if (age > 70 && patientData.genomicProfile.mgmt === 'Methylated') return "Due to advanced age, consider Hypofractionated Radiotherapy + TMZ (Perry Regimen) to minimize toxicity while maintaining efficacy.";
+                                     if (mgmtStatus === 'Unknown') return "Biomarker status pending. Provisional Standard Stupp Protocol advised pending methylation results.";
+                                     if (mgmtStatus === 'Unmethylated') return "TMZ resistance likely. Prioritize clinical trials or consider Regorafenib/Lomustine based on progression.";
+                                     if (age > 70 && mgmtStatus === 'Methylated') return "Due to advanced age, consider Hypofractionated Radiotherapy + TMZ (Perry Regimen) to minimize toxicity while maintaining efficacy.";
                                      return "Standard Stupp Protocol (TMZ + Radiotherapy) highly recommended. Favorable methylation status predicts good response.";
                                  }
                                  
                                  if (patientData.cancerType === 'Lung') {
-                                     if (patientData.genomicProfile.egfr === 'Mutated') return "Osimertinib (Tagrisso) is the preferred 1st-line therapy. Avoid Immunotherapy as monotherapy due to low efficacy in EGFR+.";
-                                     if (patientData.genomicProfile.alk === 'Positive') return "Alectinib or Brigatinib indicated. Superior CNS penetration required for ALK+ neuro-protection.";
+                                     if (egfrStatus === 'Mutated') return "Osimertinib (Tagrisso) is the preferred 1st-line therapy. Avoid Immunotherapy as monotherapy due to low efficacy in EGFR+.";
+                                     if (alkStatus === 'Positive') return "Alectinib or Brigatinib indicated. Superior CNS penetration required for ALK+ neuro-protection.";
                                      return "Standard Chemo-Immunotherapy (Pembrolizumab + Chemo) indicated in absence of driver mutations.";
                                  }
 
                                  if (patientData.cancerType === 'Breast') {
-                                     if (patientData.genomicProfile.her2 === 'Positive') return "Trastuzumab + Pertuzumab (Dual blockade) + Chemo is standard of care. Monitor cardiac function.";
-                                     if (patientData.genomicProfile.er === 'Positive') return "Endocrine Therapy (Tamoxifen/AI) + CDK4/6 Inhibitor indicated. Chemo may be spared based on Oncotype DX.";
+                                     if (her2Status === 'Positive') return "Trastuzumab + Pertuzumab (Dual blockade) + Chemo is standard of care. Monitor cardiac function.";
+                                     if (erStatus === 'Positive') return "Endocrine Therapy (Tamoxifen/AI) + CDK4/6 Inhibitor indicated. Chemo may be spared based on Oncotype DX.";
                                      return "Triple Negative: Aggressive Chemo-Immunotherapy required. Consider Platinum agents if BRCA+.";
                                  }
 

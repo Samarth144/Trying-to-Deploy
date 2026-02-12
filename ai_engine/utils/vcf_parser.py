@@ -81,7 +81,10 @@ def parse_vcf(file_path):
             "markers": found_markers,
             "stats": {
                 "total_vcf_rows": total_variants,
-                "actionable_found": len(found_markers)
+                "actionable_found": len(found_markers),
+                "high_impact": sum(1 for marker in found_markers.values() if marker["significance"] == "Pathogenic"),
+                "med_impact": sum(1 for marker in found_markers.values() if marker["significance"] == "VUS (Low Frequency)"),
+                "low_impact": total_variants - len(found_markers)
             }
         }
 

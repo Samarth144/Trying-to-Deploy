@@ -4,6 +4,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from functools import lru_cache
 from rag.retriever_hybrid import hybrid_retrieve
+import re
 
 # Options: "google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large"
 MODEL_NAME = "google/flan-t5-small"
@@ -173,7 +174,7 @@ SUPPORTING EVIDENCE:
 
     return plan_data, evidence
 
-def predict_outcomes(patient, cancer, query, queries):
+def predict_outcomes(patient, patient_data_dict, cancer, query, queries):
     # RAG evidence
     evidence = hybrid_retrieve(cancer, query, queries)
     evidence_text = "\n".join([f"[{i+1}] {e['text']}" for i, e in enumerate(evidence)])
@@ -233,7 +234,7 @@ SUPPORTING EVIDENCE:
     outputs = model.generate(**inputs, max_new_tokens=550, do_sample=False)
 
     text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-
+    print(f"DEBUG: Raw LLM output for outcomes:\n{text}\n---") # Debugging line
     try:
         import json
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
@@ -244,8 +245,8 @@ SUPPORTING EVIDENCE:
     except Exception:
         # Fallback to patient-specific heuristics based on real data
         import random
-        age = patient.get("age", 50)
-        kps = int(patient.get("kps", 100))
+        age = patient_data_dict.get("age", 50) # Ensure age is always a number for calculations
+        kps = int(patient_data_dict.get("kps", 100))
         qol = round(random.uniform(60, 80), 1)
         
         outcome_data = {
@@ -271,7 +272,7 @@ SUPPORTING EVIDENCE:
                 "high": 20 if kps >= 80 else 40
             },
             "prognostic_factors": {
-                "Age": 85 if age > 65 else 45,
+                "Age": 85 if (age is not None and age > 65) else 45,
                 "KPS Score": 90 if kps < 70 else 50,
                 "Molecular Profile": 80,
                 "Disease Burden": 70,

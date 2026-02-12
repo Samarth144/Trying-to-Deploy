@@ -2,11 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from rule_engine import run_rules
 from llm.llm_chain import generate_treatment_plan, predict_outcomes
-from utils.vcf_parser import parse_vcf # ADDED VCF PARSER IMPORT
+from utils.vcf_parser import parse_vcf
+from utils.formatter import format_multimodal_data # Import the new formatter
 import re
 import random
 import pdfplumber
 import spacy
+from datetime import datetime
 
 # Load scispaCy model for medical entity extraction
 try:
@@ -258,7 +260,7 @@ def process_report_file():
     }]
 
     # Add alternatives from Rule Engine
-    for i, alt in enumerate(rules.get("alternative_options", [])):
+    for i, alt in enumerate(rules_output.get("alternative_options", [])):
         protocols.append({
             "name": alt,
             "score": round(dynamic_confidence - (i+1)*random.uniform(5, 10), 1),
@@ -367,7 +369,7 @@ def process_report_text():
         "recommended": True
     }]
 
-    for i, alt in enumerate(rules.get("alternative_options", [])):
+    for i, alt in enumerate(rules_output.get("alternative_options", [])):
         protocols.append({
             "name": alt,
             "score": round(dynamic_confidence - (i+1)*random.uniform(5, 10), 1),
@@ -394,30 +396,66 @@ def process_report_text():
 
 
 @app.route('/recommend', methods=['POST'])
-def recommend():
-    patient_data = request.get_json()
-    
-    # Run rule engine
-    rules = run_rules(patient_data)
-    if "error" in rules:
-        return jsonify({"error": rules["error"]}), 400
+def recommend_treatment():
+    data = request.get_json()
+    patient_id = data.get('patientId')
+    cancer_type = data.get('cancerType')
+    patient_query = data.get('query', '')
+    patient_queries = data.get('queries', [])
 
-    # Prepare queries
-    cancer_type = patient_data.get("cancer_type", "cancer")
-    stage = patient_data.get("stage", "")
-    query = f"{cancer_type} stage {stage} treatment"
+    # Calculate age from DOB if age is not directly provided
+    age = data.get('age')
+    if age is None and data.get('dateOfBirth'):
+        try:
+            dob_str = data.get('dateOfBirth').split('T')[0] # Assuming ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ'
+            dob = datetime.strptime(dob_str, '%Y-%m-%d')
+            today = datetime.now()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        except Exception as e:
+            print(f"Warning: Could not calculate age from DOB: {e}")
+            age = None # Fallback if DOB parsing fails
     
-    queries = [query]
-    if patient_data.get('ER'): queries.append(f"{cancer_type} ER {patient_data['ER']}")
-    if patient_data.get('HER2'): queries.append(f"{cancer_type} HER2 {patient_data['HER2']}")
+    # Extract detailed patient data including MRI and VCF
+    patient_data_for_llm = {
+        "patientId": patient_id,
+        "cancer_type": cancer_type,
+        "age": age,
+        "kps": data.get('kps'),
+        "stage": data.get('stage'),
+        "genomicProfile": {
+            "ER": data.get('ER'),
+            "PR": data.get('PR'),
+            "HER2": data.get('HER2'),
+            "BRCA": data.get('BRCA'),
+            "PDL1": data.get('PDL1'),
+            "MGMT": data.get('MGMT'),
+            "IDH": data.get('IDH'),
+            "EGFR": data.get('EGFR'),
+            "ALK": data.get('ALK'),
+            "KRAS": data.get('KRAS'),
+            "AFP": data.get('AFP'),
+        },
+        "mriPaths": data.get('mriPaths'),
+        "vcfAnalysis": data.get('vcfAnalysis'),
+        "pathologyAnalysis": data.get('pathologyAnalysis') # If you send this from frontend
+    }
 
-    # Call LLM with full context
+    # Clean up genomicProfile to remove None values
+    patient_data_for_llm['genomicProfile'] = {k: v for k, v in patient_data_for_llm['genomicProfile'].items() if v is not None}
+
+    # Step 1: Format a rich summary from the detailed data
+    multimodal_summary = format_multimodal_data(patient_data_for_llm)
+
+    # Step 2: Run rules engine
+    rules_output = run_rules(patient_data_for_llm, cancer_type)
+    
+    # Step 3: Generate treatment plan using LLM
     plan_data, evidence = generate_treatment_plan(
-        patient=patient_data,
-        rules=rules,
-        cancer=cancer_type,
-        query=query,
-        queries=queries
+        patient=multimodal_summary, # Pass the concise summary instead of the full object
+        rules=rules_output, 
+        cancer=cancer_type, 
+        query=patient_query, 
+        queries=patient_queries
     )
 
     # Calculate Dynamic Confidence Score
@@ -438,7 +476,7 @@ def recommend():
         "recommended": True
     }]
 
-    for i, alt in enumerate(rules.get("alternative_options", [])):
+    for i, alt in enumerate(rules_output.get("alternative_options", [])):
         protocols.append({
             "name": alt,
             "score": round(dynamic_confidence - (i+1)*random.uniform(5, 10), 1),
@@ -464,50 +502,93 @@ def recommend():
 
 @app.route('/predict_side_effects', methods=['POST'])
 def predict_side_effects_route():
-    patient_data = request.get_json()
+    data = request.get_json()
+    try:
+        # Calculate age from DOB if age is not directly provided
+        age = data.get('age')
+        if age is None and data.get('dateOfBirth'):
+            try:
+                dob_str = data.get('dateOfBirth').split('T')[0] # Assuming ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ'
+                dob = datetime.strptime(dob_str, '%Y-%m-%d')
+                today = datetime.now()
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            except Exception as e:
+                print(f"Warning: Could not calculate age from DOB: {e}")
+                age = None # Fallback if DOB parsing fails
+        
+        patient_data_for_llm = {
+            "patientId": data.get('patientId'),
+            "cancer_type": data.get('cancerType'),
+            "age": age,                        "kps": data.get('kps'),
+                        "stage": data.get('stage'),
+            "genomicProfile": {
+                "ER": data.get('ER'),
+                "PR": data.get('PR'),
+                "HER2": data.get('HER2'),
+                "BRCA": data.get('BRCA'),
+                "PDL1": data.get('PDL1'),
+                "MGMT": data.get('MGMT'),
+                "IDH": data.get('IDH'),
+                "EGFR": data.get('EGFR'),
+                "ALK": data.get('ALK'),
+                "KRAS": data.get('KRAS'),
+                "AFP": data.get('AFP'),
+            },
+            "mriPaths": data.get('mriPaths'),
+            "vcfAnalysis": data.get('vcfAnalysis'),
+            "pathologyAnalysis": data.get('pathologyAnalysis')
+        }
 
-    # Prepare queries
-    cancer_type = patient_data.get("cancerType", "cancer")
-    stage = patient_data.get("stage", "")
-    query = f"Predict side effects, survival, and QoL for {cancer_type} stage {stage}"
-    queries = [query]
+        patient_data_for_llm['genomicProfile'] = {k: v for k, v in patient_data_for_llm['genomicProfile'].items() if v is not None}
+        # Prepare queries
+        cancer_type = patient_data_for_llm.get("cancer_type", "cancer")
+        stage = patient_data_for_llm.get("stage", "")
+        query = f"Predict side effects, survival, and QoL for {cancer_type} stage {stage}"
+        queries = [query]
 
-    # Call LLM with full context
-    outcome_data, evidence = predict_outcomes(
-        patient=patient_data,
-        cancer=cancer_type,
-        query=query,
-        queries=queries
-    )
+        # Format a rich summary for the LLM
+        multimodal_summary = format_multimodal_data(patient_data_for_llm)
 
-    # Calculate Dynamic Confidence Score
-    avg_rag_score = sum([e.get('score', 0.5) for e in evidence]) / len(evidence) if evidence else 0.5
-    dynamic_confidence = min(99.9, max(75.0, 95.0 - (avg_rag_score * 10)))
+        # Call LLM with full context
+        outcome_data, evidence = predict_outcomes(
+            patient=multimodal_summary, # Pass the concise summary
+            patient_data_dict=patient_data_for_llm, # Pass the original dict for heuristics
+            cancer=cancer_type,
+            query=query,
+            queries=queries
+        )        # Calculate Dynamic Confidence Score
+        avg_rag_score = sum([e.get('score', 0.5) for e in evidence]) / len(evidence) if evidence else 0.5
+        dynamic_confidence = min(99.9, max(75.0, 95.0 - (avg_rag_score * 10)))
 
-    # Map keys to match frontend expectations if necessary
-    formatted_outcome = {
-        "sideEffects": outcome_data["side_effects"],
-        "overallSurvival": {
-            "median": outcome_data["overall_survival"]["median"],
-            "range": [outcome_data["overall_survival"]["range_min"], outcome_data["overall_survival"]["range_max"]]
-        },
-        "progressionFreeSurvival": {
-            "median": outcome_data["progression_free_survival"]["median"],
-            "range": [outcome_data["progression_free_survival"]["range_min"], outcome_data["progression_free_survival"]["range_max"]]
-        },
-        "riskStratification": outcome_data.get("risk_stratification", {"low": 25, "moderate": 45, "high": 30}),
-        "prognosticFactors": outcome_data.get("prognostic_factors", {"Age": 65, "KPS": 85, "Biomarkers": 90}),
-        "timelineProjection": outcome_data.get("timeline_projection", {
-            "months": ["Baseline", "3 mo", "6 mo", "12 mo", "18 mo", "24 mo"],
-            "response_indicator": [100, 40, 35, 45, 55, 65],
-            "quality_of_life": [75, 70, 73, 67, 63, 60]
-        }),
-        "qualityOfLife": outcome_data["quality_of_life"],
-        "evidence": evidence,
-        "confidence": round(dynamic_confidence, 1)
-    }
+        # Map keys to match frontend expectations if necessary
+        formatted_outcome = {
+            "sideEffects": outcome_data["side_effects"],
+            "overallSurvival": {
+                "median": outcome_data["overall_survival"]["median"],
+                "range": [outcome_data["overall_survival"]["range_min"], outcome_data["overall_survival"]["range_max"]]
+            },
+            "progressionFreeSurvival": {
+                "median": outcome_data["progression_free_survival"]["median"],
+                "range": [outcome_data["progression_free_survival"]["range_min"], outcome_data["progression_free_survival"]["range_max"]]
+            },
+            "riskStratification": outcome_data.get("risk_stratification", {"low": 25, "moderate": 45, "high": 30}),
+            "prognosticFactors": outcome_data.get("prognostic_factors", {"Age": 65, "KPS": 85, "Biomarkers": 90}),
+            "timelineProjection": outcome_data.get("timeline_projection", {
+                "months": ["Baseline", "3 mo", "6 mo", "12 mo", "18 mo", "24 mo"],
+                "response_indicator": [100, 40, 35, 45, 55, 65],
+                "quality_of_life": [75, 70, 73, 67, 63, 60]
+            }),
+            "qualityOfLife": outcome_data["quality_of_life"],
+            "evidence": evidence,
+            "confidence": round(dynamic_confidence, 1)
+        }
 
-    return jsonify(formatted_outcome)
+        return jsonify(formatted_outcome)
+    except Exception as e:
+        print(f"Error in predict_side_effects_route: {e}")
+        import traceback
+        traceback.print_exc() # Print full traceback
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/process_vcf', methods=['POST'])

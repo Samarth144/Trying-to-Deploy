@@ -506,6 +506,7 @@ const PatientIntake = () => {
 
         // 3. Save Patient Data
         const payload = { ...formData, pathologyReportPath: reportPath, mriPaths, vcfAnalysis: vcfAnalysisResult };
+        console.log("Payload being sent to backend:", payload); // Debugging line
         delete payload.pathologyFile; // Remove file object
         delete payload.vcfFile; // Remove file object
 

@@ -17,8 +17,8 @@ KB = {
 }
 
 
-def run_rules(patient):
-    cancer = patient.get("cancer_type", "").lower()
+def run_rules(patient, cancer_type):
+    cancer = cancer_type.lower()
     
     # 1. BRAIN SPECIFIC STAGING LOGIC
     if cancer == "brain":

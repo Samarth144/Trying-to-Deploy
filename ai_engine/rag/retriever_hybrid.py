@@ -5,7 +5,6 @@ from rag.retriever_online import retrieve_pubmed_evidence
 
 
 def hybrid_retrieve(cancer, query, queries, k_local=5, k_online=3):
-
     # -------------------------
     # OFFLINE NCCN EVIDENCE
     # -------------------------

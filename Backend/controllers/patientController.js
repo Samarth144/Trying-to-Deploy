@@ -172,7 +172,7 @@ exports.createPatient = async (req, res) => {
         const {
             name, mrn, dob, gender, contact, email, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths,
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths, vcfAnalysis,
             userId
         } = req.body;
 
@@ -223,6 +223,7 @@ exports.createPatient = async (req, res) => {
             symptoms: symptomsArray,
             comorbidities: comorbiditiesArray,
             genomicProfile,
+            vcfAnalysis: vcfAnalysis || {},
             medicalHistory: pathologyReport, 
             pathologyReportPath, 
             mriPaths,
@@ -262,7 +263,7 @@ exports.updatePatient = async (req, res) => {
         const { 
             name, mrn, dob, gender, contact, email, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths,
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths, vcfAnalysis,
             userId
         } = req.body;
 
@@ -298,6 +299,7 @@ exports.updatePatient = async (req, res) => {
         }
         if (pathologyReport) updates.medicalHistory = pathologyReport;
         if (pathologyReportPath) updates.pathologyReportPath = pathologyReportPath;
+        if (vcfAnalysis) updates.vcfAnalysis = vcfAnalysis;
         if (mriPaths) {
             updates.mriPaths = { ...(patient.mriPaths || {}), ...mriPaths };
         }

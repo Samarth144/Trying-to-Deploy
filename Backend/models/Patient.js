@@ -97,6 +97,10 @@ const Patient = sequelize.define('Patient', {
         type: DataTypes.JSONB,
         defaultValue: {}
     },
+    vcfAnalysis: {
+        type: DataTypes.JSONB,
+        defaultValue: {}
+    },
     userId: {
         type: DataTypes.UUID,
         allowNull: true,
