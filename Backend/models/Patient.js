@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 const User = require('./User');
-const { encryptField, decryptField } = require('../utils/encryption');
+const { encryptField, decryptField, hashSensitiveData } = require('../utils/encryption');
 
 // ─── Sensitive Fields Configuration ─────────────────────────────────────────
 // Fields that will be AES-256-GCM encrypted at rest in the database.
@@ -37,6 +37,10 @@ const Patient = sequelize.define('Patient', {
     },
     email: {
         type: DataTypes.TEXT, // Changed to TEXT to accommodate encrypted strings
+        allowNull: true
+    },
+    emailHash: {
+        type: DataTypes.STRING(64),
         allowNull: true
     },
     phone: {
@@ -115,10 +119,45 @@ const Patient = sequelize.define('Patient', {
         }
     }
 }, {
+    indexes: [
+        {
+            fields: ['emailHash']
+        },
+        {
+            fields: ['userId']
+        },
+        {
+            fields: ['mrn']
+        }
+    ],
     hooks: {
         // ──── Encrypt sensitive fields before validation ───────────────────
         beforeValidate: (patient) => {
             try {
+                // Populate emailHash for searching BEFORE encryption
+                if (patient.email && (patient.changed('email') || !patient.emailHash)) {
+                    let plaintextEmail = patient.email;
+                    
+                    // If it's already encrypted (likely from a database read or partial update), decrypt it first
+                    const isEncrypted = typeof plaintextEmail === 'string' && 
+                                      plaintextEmail.length > 20 && 
+                                      plaintextEmail.includes(':') === false && // Base64 doesn't have ':'
+                                      (() => {
+                                          try {
+                                              const decoded = Buffer.from(plaintextEmail, 'base64').toString('utf8');
+                                              return decoded.split(':').length === 3;
+                                          } catch (e) { return false; }
+                                      })();
+
+                    if (isEncrypted) {
+                        plaintextEmail = decryptField(plaintextEmail);
+                    }
+
+                    if (plaintextEmail && typeof plaintextEmail === 'string') {
+                        patient.emailHash = hashSensitiveData(plaintextEmail.trim().toLowerCase());
+                    }
+                }
+
                 for (const field of ENCRYPTED_STRING_FIELDS) {
                     if (patient[field]) {
                         patient[field] = encryptField(patient[field]);

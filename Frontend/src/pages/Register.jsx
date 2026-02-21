@@ -90,10 +90,10 @@ const RegisterPage = () => {
             <Box className="role-grid-container">
               <Typography variant="caption" className="role-label">SELECT ROLE</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={3}><RoleCard label="PATIENT" icon={<AssignmentIndIcon />} selected={role === 'patient'} onSelect={() => setRole('patient')} color="#10B981" roleKey="patient" /></Grid>
-                <Grid item xs={3}><RoleCard label="ONCOLOGIST" icon={<BadgeIcon />} selected={role === 'oncologist'} onSelect={() => setRole('oncologist')} color="#00F0FF" roleKey="oncologist" /></Grid>
-                <Grid item xs={3}><RoleCard label="RESEARCHER" icon={<ScienceIcon />} selected={role === 'researcher'} onSelect={() => setRole('researcher')} color="#8B5CF6" roleKey="researcher" /></Grid>
-                <Grid item xs={3}><RoleCard label="SYS ADMIN" icon={<SecurityIcon />} selected={role === 'admin'} onSelect={() => setRole('admin')} color="#F59E0B" roleKey="admin" /></Grid>
+                <Grid xs={3}><RoleCard label="PATIENT" icon={<AssignmentIndIcon />} selected={role === 'patient'} onSelect={() => setRole('patient')} color="#10B981" roleKey="patient" /></Grid>
+                <Grid xs={3}><RoleCard label="ONCOLOGIST" icon={<BadgeIcon />} selected={role === 'oncologist'} onSelect={() => setRole('oncologist')} color="#00F0FF" roleKey="oncologist" /></Grid>
+                <Grid xs={3}><RoleCard label="RESEARCHER" icon={<ScienceIcon />} selected={role === 'researcher'} onSelect={() => setRole('researcher')} color="#8B5CF6" roleKey="researcher" /></Grid>
+                <Grid xs={3}><RoleCard label="SYS ADMIN" icon={<SecurityIcon />} selected={role === 'admin'} onSelect={() => setRole('admin')} color="#F59E0B" roleKey="admin" /></Grid>
               </Grid>
             </Box>
 

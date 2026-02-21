@@ -174,7 +174,7 @@ const PatientProfile = () => {
         <Grid container spacing={4}>
           
           {/* --- LEFT COL: IDENTITY CARD (30%) --- */}
-          <Grid item xs={12} md={4}>
+          <Grid xs={12} md={4}>
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
               <Box className="identity-card">
                 {/* ID Header */}
@@ -195,7 +195,7 @@ const PatientProfile = () => {
 
                 {/* Details Grid */}
                 <Grid container spacing={3} className="identity-details-grid">
-                   <Grid item xs={6}>
+                   <Grid xs={6}>
                      <Typography variant="caption" className="detail-label">
                        <CalendarMonthIcon sx={{ fontSize: 16 }} /> DOB
                      </Typography>
@@ -203,13 +203,13 @@ const PatientProfile = () => {
                         {new Date(patient.dateOfBirth).toLocaleDateString()}
                      </Typography>
                    </Grid>
-                   <Grid item xs={6}>
+                   <Grid xs={6}>
                      <Typography variant="caption" className="detail-label">
                        <WcIcon sx={{ fontSize: 16 }} /> SEX
                      </Typography>
                      <Typography variant="body1" className="detail-value" sx={{ textTransform: 'uppercase' }}>{patient.gender}</Typography>
                    </Grid>
-                   <Grid item xs={12}>
+                   <Grid xs={12}>
                      <Typography variant="caption" className="detail-label">
                        <PhoneIcon sx={{ fontSize: 16 }} /> CONTACT
                      </Typography>
@@ -227,7 +227,7 @@ const PatientProfile = () => {
           </Grid>
 
           {/* --- RIGHT COL: CLINICAL CONTEXT & MODULES (70%) --- */}
-          <Grid item xs={12} md={8}>
+          <Grid xs={12} md={8}>
             
             {/* 1. DIAGNOSIS & METRICS ROW */}
             <Box className="clinical-overview-row">
@@ -261,19 +261,19 @@ const PatientProfile = () => {
             </Typography>
             
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={4} md={2.4}>
+              <Grid xs={6} sm={4} md={2.4}>
                 <ModuleCard label="MRI ANALYSIS" icon={<ViewInArIcon />} color={colors.cyan} delay={0.1} onClick={() => navigate(`/mri-analysis${pidQuery}`)} />
               </Grid>
-              <Grid item xs={6} sm={4} md={2.4}>
+              <Grid xs={6} sm={4} md={2.4}>
                 <ModuleCard label="PATHOLOGY" icon={<ScienceIcon />} color="#EC4899" delay={0.2} onClick={() => navigate(`/histopathology${pidQuery}`)} />
               </Grid>
-              <Grid item xs={6} sm={4} md={2.4}>
+              <Grid xs={6} sm={4} md={2.4}>
                 <ModuleCard label="GENOMICS" icon={<BiotechIcon />} color={colors.purple} delay={0.3} onClick={() => navigate(`/genomic-analysis${pidQuery}`)} />
               </Grid>
-              <Grid item xs={6} sm={4} md={2.4}>
+              <Grid xs={6} sm={4} md={2.4}>
                 <ModuleCard label="TREATMENT" icon={<MedicationIcon />} color="#10B981" delay={0.4} onClick={() => navigate(`/treatment-plan${pidQuery}`)} />
               </Grid>
-              <Grid item xs={6} sm={4} md={2.4}>
+              <Grid xs={6} sm={4} md={2.4}>
                 <ModuleCard label="3D SCENE" icon={<PlayCircleOutlineIcon />} color={colors.amber} delay={0.5} onClick={() => navigate(`/tumor-3d${pidQuery}`)} />
               </Grid>
             </Grid>
@@ -282,7 +282,7 @@ const PatientProfile = () => {
             <Box className="insights-section">
                 <Grid container spacing={3}>
                     {/* Symptoms Column */}
-                    <Grid item xs={12} md={3}>
+                    <Grid xs={12} md={3}>
                         <Paper className="insight-card">
                             <Typography variant="overline" className="insight-title" sx={{ fontSize: '0.8rem' }}>Reported Symptoms</Typography>
                             <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -305,7 +305,7 @@ const PatientProfile = () => {
                     </Grid>
 
                     {/* Comorbidities Column */}
-                    <Grid item xs={12} md={3}>
+                    <Grid xs={12} md={3}>
                         <Paper className="insight-card">
                             <Typography variant="overline" className="insight-title" sx={{ fontSize: '0.8rem' }}>Comorbidities</Typography>
                             <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -329,7 +329,7 @@ const PatientProfile = () => {
                     </Grid>
 
                     {/* Biomarkers Column */}
-                    <Grid item xs={12} md={6}>
+                    <Grid xs={12} md={6}>
                         <Paper className="insight-card">
                             <Box className="insight-header">
                                 <Typography variant="overline" className="insight-title" sx={{ fontSize: '0.8rem' }}>Biomarker Status</Typography>
@@ -357,7 +357,7 @@ const PatientProfile = () => {
 
                                     if (displayKeys.length === 0) {
                                         return (
-                                            <Grid item xs={12}>
+                                            <Grid xs={12}>
                                                 <Typography variant="body1" sx={{ color: colors.muted, fontWeight: 500 }}>
                                                     No specialized biomarkers defined for {cancerType}
                                                 </Typography>
@@ -366,7 +366,7 @@ const PatientProfile = () => {
                                     }
 
                                     return displayKeys.map(key => (
-                                        <Grid item xs={4} key={key}>
+                                        <Grid xs={4} key={key}>
                                             <Box className="biomarker-box">
                                                 <Typography variant="caption" className="biomarker-label">
                                                     {allMarkers[key]}

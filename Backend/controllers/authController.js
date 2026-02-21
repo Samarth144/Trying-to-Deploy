@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Patient = require('../models/Patient');
 const generateToken = require('../utils/generateToken');
+const { hashSensitiveData } = require('../utils/encryption');
+const { Op } = require('sequelize');
 
 
 // @desc    Register new user
@@ -30,10 +32,29 @@ exports.register = async (req, res) => {
 
         // Link existing patient record if this is a patient registration
         if (user.role === 'patient') {
-            await Patient.update(
+            const emailHash = hashSensitiveData(trimmedEmail.toLowerCase());
+            
+            // Try updating by hash first (best performance)
+            const [affectedRows] = await Patient.update(
                 { userId: user.id },
-                { where: { email: trimmedEmail, userId: null } }
+                { where: { emailHash, userId: null } }
             );
+
+            // Fallback for existing patients without emailHash
+            if (affectedRows === 0) {
+                console.log(`No patient found by emailHash for ${trimmedEmail}, trying fallback search...`);
+                const patientsWithoutHash = await Patient.findAll({ where: { userId: null } });
+                for (const p of patientsWithoutHash) {
+                    // Patient model automatically decrypts 'email' in afterFind hook
+                    if (p.email && p.email.trim().toLowerCase() === trimmedEmail.toLowerCase()) {
+                        console.log(`Matched patient ${p.id} via fallback search. Linking to user ${user.id}...`);
+                        p.userId = user.id;
+                        // Saving will also trigger beforeValidate which calculates emailHash for future lookups
+                        await p.save();
+                        break;
+                    }
+                }
+            }
         }
 
         res.status(201).json({
@@ -89,6 +110,35 @@ exports.login = async (req, res) => {
         }
 
 
+
+        // Link existing patient record if this is a patient login but userId is not linked yet
+        if (user.role === 'patient') {
+            const emailHash = hashSensitiveData(email.trim().toLowerCase());
+            
+            // Try to find patient record that matches emailHash first
+            let patient = await Patient.findOne({
+                where: { emailHash, userId: null }
+            });
+
+            if (!patient) {
+                // Try fallback for patients who don't have emailHash yet
+                const unlinkedPatients = await Patient.findAll({ where: { userId: null } });
+                for (const p of unlinkedPatients) {
+                    // Patient model automatically decrypts email in afterFind hook
+                    if (p.email && p.email.trim().toLowerCase() === email.trim().toLowerCase()) {
+                        patient = p;
+                        break;
+                    }
+                }
+            }
+
+            if (patient) {
+                console.log(`Linking patient ${patient.id} to user ${user.id} during login...`);
+                patient.userId = user.id;
+                // save() will trigger beforeValidate hook to calculate emailHash
+                await patient.save();
+            }
+        }
 
         res.json({
             success: true,

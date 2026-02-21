@@ -71,7 +71,7 @@ async function formatSideEffectsWithGemini(sideEffects, patientData) {
     }
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: {
             temperature: 0.4,
             maxOutputTokens: 4096
@@ -130,7 +130,7 @@ async function generatePathwayWithGemini(plan) {
 
     if (!plan) return [];
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const recommendedProtocol = plan.recommendedProtocol || (plan.planData && plan.planData.primary_treatment) || "Standard Protocol";
     const rationale = plan.rationale || (plan.planData && plan.planData.clinical_rationale) || "Standard clinical protocol.";

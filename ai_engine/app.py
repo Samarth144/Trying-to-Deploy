@@ -121,18 +121,23 @@ def parse_report_text(text):
 
     # 5. Biomarkers (Brain)
     # MGMT
-    mgmt_m = re.search(r"MGMT\s*(?:Promoter)?\s*(?:Status)?\s*(Methylated|Unmethylated|Positive|Negative)", clean_text, re.IGNORECASE)
+    mgmt_m = re.search(r"MGMT\s*(?:Promoter)?\s*(?:Status)?\s*[:\n\s]*(Methylated|Unmethylated|Positive|Negative)", text, re.IGNORECASE)
     if mgmt_m:
         patient_data['MGMT'] = mgmt_m.group(1).capitalize()
     
     # IDH
-    idh_m = re.search(r"IDH\s*(?:Status)?\s*(Mutant|Wild-Type|Wildtype|Mutated|WT|Positive|Negative|1|2)", clean_text, re.IGNORECASE)
+    idh_m = re.search(r"IDH\s*(?:Status)?\s*[:\n\s]*(Mutant|Wild-Type|Wildtype|Mutated|WT|Positive|Negative|1|2)", text, re.IGNORECASE)
     if idh_m:
         val = idh_m.group(1).upper()
         if val in ["MUTANT", "MUTATED", "POSITIVE", "1", "2"]: 
             patient_data['IDH1'] = "Mutated"
         else: 
             patient_data['IDH1'] = "Wild Type"
+
+    # Resection Extent (New)
+    resection_m = re.search(r"Resection\s*(?:Extent|Status)?\s*[:\n\s]*(Gross\s*Total|Subtotal|Partial|Biopsy)", text, re.IGNORECASE)
+    if resection_m:
+        patient_data['resection'] = resection_m.group(1).strip().title()
 
     # 6. Biomarkers (Breast)
     for marker in ['ER', 'PR', 'HER2']:
@@ -175,9 +180,27 @@ def parse_report_text(text):
         if stage_m:
             s = stage_m.group(1).upper()
             mapping = {"1": "I", "2": "II", "3": "III", "4": "IV"}
-            patient_data['stage'] = mapping.get(s, s)
+            canonical_stage = mapping.get(s, s)
+            
+            # Map canonical Roman numerals to cancer-specific semantics
+            if patient_data.get('cancer_type') == 'Liver':
+                liver_map = {"I": "EARLY", "II": "EARLY", "III": "INTERMEDIATE", "IV": "ADVANCED"}
+                patient_data['stage'] = liver_map.get(canonical_stage, "EARLY")
+            elif patient_data.get('cancer_type') == 'Pancreas':
+                panc_map = {"I": "RESECTABLE", "II": "RESECTABLE", "III": "LOCALLY_ADVANCED", "IV": "METASTATIC"}
+                patient_data['stage'] = panc_map.get(canonical_stage, "RESECTABLE")
+            else:
+                patient_data['stage'] = canonical_stage
         elif patient_data.get('grade'):
-            patient_data['stage'] = patient_data['grade']
+            g = patient_data['grade']
+            if patient_data.get('cancer_type') == 'Liver':
+                liver_map = {"I": "EARLY", "II": "EARLY", "III": "INTERMEDIATE", "IV": "ADVANCED"}
+                patient_data['stage'] = liver_map.get(g, "EARLY")
+            elif patient_data.get('cancer_type') == 'Pancreas':
+                panc_map = {"I": "RESECTABLE", "II": "RESECTABLE", "III": "LOCALLY_ADVANCED", "IV": "METASTATIC"}
+                patient_data['stage'] = panc_map.get(g, "RESECTABLE")
+            else:
+                patient_data['stage'] = g
 
     return patient_data
 
@@ -489,6 +512,15 @@ def recommend_treatment():
             queries=patient_queries
         )
 
+        # Inject Personalization Insight from Rule Engine into plan_data
+        if isinstance(plan_data, dict):
+            plan_data["personalization_insight"] = rules.get("personalization_insight", "")
+        else:
+            plan_data = {
+                "primary_treatment": str(plan_data),
+                "personalization_insight": rules.get("personalization_insight", "")
+            }
+
         # Calculate Dynamic Confidence Score
         avg_rag_score = sum([e.get('score', 0.5) for e in evidence]) / len(evidence) if evidence else 0.5
         dynamic_confidence = min(99.9, max(75.0, 95.0 - (avg_rag_score * 10)))
@@ -607,6 +639,8 @@ def predict_side_effects_route():
         # outcome_data, evidence = predict_outcomes(...) <-- REPLACED WITH ENGINE
 
         # 1. Generate Treatment Plan first (to know which drugs to check for toxicity)
+        if age is not None:
+            age = int(age)
         rules = run_rules(patient_data_for_llm, cancer_type)
         plan_data, evidence = generate_treatment_plan(
             patient=multimodal_summary,

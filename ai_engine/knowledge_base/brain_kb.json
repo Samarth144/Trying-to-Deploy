@@ -1,46 +1,34 @@
 {
   "stages": {
     "LOCALIZED": {
-      "primary_treatments": [
-        {"treatment": "Stupp Protocol (Resection + RT + Temozolomide)", "evidence": "Level 1 (Standard of Care)"}
-      ],
-      "surgery": [
-        {"treatment": "Maximal safe resection", "evidence": "Level 1"}
-      ],
-      "radiation": [
-        {"treatment": "60 Gy fractionated radiotherapy", "evidence": "Level 1"}
-      ],
-      "systemic": [
-        {"treatment": "Temozolomide concurrent + adjuvant", "evidence": "Level 1"}
-      ],
-      "mgmt": [
-        {"treatment": "Prolonged benefit if MGMT methylated", "evidence": "Level 1"}
-      ],
-      "alternatives": [
-        {"treatment": "Tumor Treating Fields (TTFields)", "evidence": "Level 1 (FDA Approved)"}, 
-        "Clinical Trial Participation"
-      ],
-      "follow_up": ["MRI q2-3m"]
+      "default": {
+        "primary_treatments": [{"treatment": "Standard Stupp Protocol (Resection + 60Gy RT + TMZ)", "evidence": "Level 1 (NCCN)"}],
+        "rationale": "Standard of care for fit patients with localized high-grade glioma."
+      },
+      "oligodendroglioma": {
+        "primary_treatments": [{"treatment": "PCV Regimen (Procarbazine + CCNU + Vincristine) + RT", "evidence": "Level 1 (EANO)"}],
+        "rationale": "1p/19q codeletion confirms Oligodendroglioma. Clinical trials (RTOG 9402) prove PCV offers superior long-term OS compared to TMZ."
+      },
+      "idh_wildtype": {
+        "primary_treatments": [{"treatment": "Aggressive Stupp + Optune (TTFields)", "evidence": "Level 1 (FDA)"}],
+        "rationale": "IDH-Wildtype (GBM) is highly aggressive. Optune (Tumor Treating Fields) is mandatory for maximal survival benefit."
+      },
+      "idh_mutant": {
+        "primary_treatments": [{"treatment": "Standard Stupp Protocol (Resection + RT + TMZ)", "evidence": "Level 1"}],
+        "rationale": "IDH-Mutant Astrocytoma predicts favorable response to alkylating agents."
+      },
+      "elderly_frail": {
+        "primary_treatments": [{"treatment": "Hypofractionated RT (40Gy/15fx) + TMZ (Perry Regimen)", "evidence": "Level 1"}],
+        "rationale": "Perry Trial evidence shows 3-week RT is non-inferior to 6-week RT in patients >65, with significantly less cognitive decline."
+      },
+      "palliative": {
+        "primary_treatments": [{"treatment": "Best Supportive Care (BSC) + Dexamethasone", "evidence": "Level 1"}],
+        "rationale": "Focus on symptom management and intracranial pressure control due to low functional reserve (KPS ≤ 60)."
+      }
     },
     "RECURRENT": {
-      "primary_treatments": [
-        {"treatment": "Salvage Systemic Therapy (Bevacizumab)", "evidence": "Level 2 (Strong Evidence)"}
-      ],
-      "systemic": [
-        {"treatment": "Bevacizumab", "evidence": "Level 2"}
-      ],
-      "surgery": [
-        {"treatment": "Re-resection if feasible", "evidence": "Level 3 (Expert Opinion)"}
-      ],
-      "radiation": [
-        {"treatment": "Re-irradiation selectively", "evidence": "Level 3"}
-      ],
-      "alternatives": [
-        {"treatment": "Lomustine", "evidence": "Level 2"},
-        {"treatment": "Regorafenib", "evidence": "Level 2"},
-        "Clinical Trial"
-      ],
-      "follow_up": ["MRI q8-12w"]
+      "primary_treatments": [{"treatment": "Salvage Therapy (Bevacizumab + Lomustine)", "evidence": "Level 2"}],
+      "rationale": "Anti-angiogenic pivot for VEGF-driven recurrence."
     }
   }
 }

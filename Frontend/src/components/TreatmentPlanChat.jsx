@@ -3,6 +3,7 @@ import { Box, Typography, TextField, IconButton, Paper, CircularProgress } from 
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatIcon from '@mui/icons-material/Chat';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import apiClient from '../utils/apiClient';
 
 const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
@@ -58,15 +59,20 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                 onClick={() => setIsOpen(true)}
                 sx={{
                     position: 'fixed',
-                    bottom: 24,
-                    right: 24,
-                    backgroundColor: '#059789',
+                    bottom: 32,
+                    right: 32,
+                    background: 'linear-gradient(135deg, #5B6FF6 0%, #7C5CFF 100%)',
                     color: '#fff',
-                    '&:hover': { backgroundColor: '#00F0FF' },
-                    boxShadow: '0 0 20px rgba(5, 151, 137, 0.4)',
+                    '&:hover': { 
+                        background: 'linear-gradient(135deg, #7C5CFF 0%, #5B6FF6 100%)',
+                        transform: 'scale(1.1)',
+                        boxShadow: '0 0 30px rgba(91, 111, 246, 0.5)'
+                    },
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
                     width: 64,
                     height: 64,
-                    zIndex: 1000
+                    zIndex: 9999,
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
             >
                 <ChatIcon />
@@ -76,83 +82,101 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
 
     return (
         <Paper
-            elevation={12}
+            elevation={24}
             sx={{
                 position: 'fixed',
-                bottom: 24,
-                right: 24,
-                width: 400,
-                height: 500,
+                bottom: 32,
+                right: 32,
+                width: 420,
+                height: 550,
                 display: 'flex',
                 flexDirection: 'column',
-                backgroundColor: '#162032',
-                border: '1px solid #059789',
-                borderRadius: '16px',
+                backgroundColor: '#0F172A',
+                border: '1px solid rgba(91, 111, 246, 0.3)',
+                borderRadius: '20px',
                 overflow: 'hidden',
-                zIndex: 1000
+                zIndex: 9999,
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}
         >
             {/* Header */}
             <Box sx={{ 
-                p: 2, 
-                backgroundColor: '#059789', 
+                p: 2.5, 
+                background: 'linear-gradient(90deg, #5B6FF6 0%, #7C5CFF 100%)', 
                 color: '#fff', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
-                alignItems: 'center' 
+                alignItems: 'center',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
             }}>
-                <Typography variant="h6" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>CLINICAL ASSISTANT</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <PsychologyIcon sx={{ fontSize: 24 }} />
+                    <Typography variant="h6" sx={{ fontFamily: 'Rajdhani', fontWeight: 700, letterSpacing: '1px' }}>CLINICAL ASSISTANT</Typography>
+                </Box>
                 <IconButton size="small" onClick={() => setIsOpen(false)} sx={{ color: '#fff' }}>
                     <CloseIcon />
                 </IconButton>
             </Box>
 
             {/* Messages */}
-            <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ flexGrow: 1, p: 2.5, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, backgroundColor: '#070B14' }}>
                 {messages.map((msg, i) => (
                     <Box 
                         key={i} 
                         sx={{ 
                             alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                            maxWidth: '80%',
-                            backgroundColor: msg.role === 'user' ? '#059789' : 'rgba(255,255,255,0.05)',
+                            maxWidth: '85%',
+                            backgroundColor: msg.role === 'user' ? '#5B6FF6' : 'rgba(255,255,255,0.03)',
                             color: '#fff',
-                            p: 1.5,
-                            borderRadius: msg.role === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
-                            border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.1)' : 'none'
+                            p: 2,
+                            borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                            border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                            boxShadow: msg.role === 'user' ? '0 4px 12px rgba(91, 111, 246, 0.2)' : 'none'
                         }}
                     >
-                        <Typography variant="body2" sx={{ fontFamily: 'Space Grotesk' }}>{msg.content}</Typography>
+                        <Typography variant="body2" sx={{ fontFamily: 'Space Grotesk', lineHeight: 1.5, fontSize: '0.9rem' }}>{msg.content}</Typography>
                     </Box>
                 ))}
                 {loading && (
-                    <Box sx={{ alignSelf: 'flex-start', p: 1 }}>
-                        <CircularProgress size={20} sx={{ color: '#00F0FF' }} />
+                    <Box sx={{ alignSelf: 'flex-start', p: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <CircularProgress size={16} sx={{ color: '#21D4BD' }} />
+                        <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'Rajdhani', fontWeight: 600 }}>THINKING...</Typography>
                     </Box>
                 )}
                 <div ref={messagesEndRef} />
             </Box>
 
             {/* Input */}
-            <Box component="form" onSubmit={handleSendMessage} sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 1 }}>
+            <Box component="form" onSubmit={handleSendMessage} sx={{ p: 2.5, backgroundColor: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 1.5, alignItems: 'center' }}>
                 <TextField
                     fullWidth
                     size="small"
-                    placeholder="Ask about the treatment..."
+                    placeholder="Inquire about protocol deltas..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     sx={{
                         '& .MuiOutlinedInput-root': {
                             color: '#fff',
-                            '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                            '&:hover fieldset': { borderColor: '#059789' },
-                            '&.Mui-focused fieldset': { borderColor: '#00F0FF' }
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            borderRadius: '12px',
+                            '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+                            '&:hover fieldset': { borderColor: 'rgba(91, 111, 246, 0.5)' },
+                            '&.Mui-focused fieldset': { borderColor: '#5B6FF6' }
                         },
-                        '& .MuiInputBase-input': { fontFamily: 'Space Grotesk' }
+                        '& .MuiInputBase-input': { fontFamily: 'Space Grotesk', fontSize: '0.9rem' }
                     }}
                 />
-                <IconButton type="submit" disabled={loading} sx={{ color: '#00F0FF' }}>
-                    <SendIcon />
+                <IconButton 
+                    type="submit" 
+                    disabled={loading || !message.trim()} 
+                    sx={{ 
+                        backgroundColor: message.trim() ? '#5B6FF6' : 'transparent',
+                        color: '#fff',
+                        '&:hover': { backgroundColor: '#7C5CFF' },
+                        '&.Mui-disabled': { color: 'rgba(255,255,255,0.1)' }
+                    }}
+                >
+                    <SendIcon sx={{ fontSize: 20 }} />
                 </IconButton>
             </Box>
         </Paper>

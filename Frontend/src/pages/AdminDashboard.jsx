@@ -148,7 +148,7 @@ const AdminDashboard = () => {
             { label: 'Oncologists', value: users.filter(u => u.role === 'oncologist').length, icon: <PeopleIcon />, color: colors.cyan },
             { label: 'Patients', value: users.filter(u => u.role === 'patient').length, icon: <PeopleIcon />, color: colors.green },
           ].map((stat, i) => (
-            <Grid item xs={12} sm={6} md={3} key={i}>
+            <Grid xs={12} sm={6} md={3} key={i}>
               <Paper sx={{ p: 3, bgcolor: colors.glass, border: `1px solid ${colors.border}`, borderRadius: '12px' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>

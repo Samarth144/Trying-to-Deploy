@@ -145,7 +145,7 @@ const ClearanceLevelSelection = () => {
         {/* ROLE GRID */}
         <Grid container spacing={4} justifyContent="center">
           {roles.map((role) => (
-            <Grid item key={role.id}>
+            <Grid key={role.id}>
               <RoleCard {...role} />
             </Grid>
           ))}

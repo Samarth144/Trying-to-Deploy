@@ -547,7 +547,7 @@ const MRIAnalysis = () => {
         ) : (
           /* MAIN GRID */
           <Grid container spacing={4} sx={{ width: '90vw', minWidth: 0 }}>
-            <Grid item xs={12} lg={7}>
+            <Grid xs={12} lg={7}>
                <MRIViewer 
                   analysisId={analysisId}
                   viewPlane={viewPlane}
@@ -559,7 +559,7 @@ const MRIAnalysis = () => {
                />
             </Grid>
 
-            <Grid item xs={12} lg={5}>
+            <Grid xs={12} lg={5}>
               <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="overline" sx={{ color: colors.teal, letterSpacing: '2px', fontWeight: 700, display: 'block', fontSize: '1.2rem', pt: '160px', pb: '10px' }}>
@@ -567,7 +567,7 @@ const MRIAnalysis = () => {
                   </Typography>
                   <Grid container spacing={2} sx={{ mt: 1, gap: '1rem', justifyContent: 'center', width: '90vw' }}>
                      {metrics.map((m) => (
-                       <Grid item xs={6} key={m.label}>
+                       <Grid xs={6} key={m.label}>
                          <MetricCard {...m} />
                        </Grid>
                      ))}
@@ -591,13 +591,13 @@ const MRIAnalysis = () => {
                   </Typography>
                   
                   <Grid container spacing={3} sx={{ justifyContent: 'center', gap: '5rem' }}>
-                     <Grid item xs={12} md={6} sx={{ width: '40%' }}>
+                     <Grid xs={12} md={6} sx={{ width: '40%' }}>
                        <div style={{ height: '400px' }}>
                           <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>TEXTURE (GLCM)</Typography>
                           <Bar data={textureData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />
                        </div>
                      </Grid>
-                     <Grid item xs={12} md={6} sx={{ width: '40%' }}>
+                     <Grid xs={12} md={6} sx={{ width: '40%' }}>
                        <div style={{ height: '400px' }}>
                           <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>INTENSITY HISTOGRAM</Typography>
                           <Line data={intensityData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />

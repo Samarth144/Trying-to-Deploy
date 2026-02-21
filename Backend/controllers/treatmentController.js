@@ -85,11 +85,15 @@ exports.generateFormattedPlan = async (req, res) => {
         const confidence = rawTreatmentData.confidence || 92.0;
         const protocols = rawTreatmentData.protocols || [];
 
-        // Step 2: Format ONLY the evidence using the Gemini API formatter.
-        console.log('Step 2: Formatting evidence with Gemini...');
-        let formattedEvidence = "No specific evidence provided for formatting.";
-        if (evidence && evidence.length > 0) {
+        // Step 2: Use pre-formatted evidence from AI engine if available, otherwise format with Gemini.
+        console.log('Step 2: Checking for pre-formatted evidence...');
+        let formattedEvidence = rawPlan.formatted_evidence;
+        
+        if (!formattedEvidence && evidence && evidence.length > 0) {
+            console.log('No pre-formatted evidence found. Calling Gemini for formatting...');
             formattedEvidence = await formatEvidenceWithGemini(evidence);
+        } else if (!formattedEvidence) {
+            formattedEvidence = "No specific evidence provided for formatting.";
         }
 
         // 3. Save the generated plan to DB if patientId is provided

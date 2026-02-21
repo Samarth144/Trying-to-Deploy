@@ -474,7 +474,7 @@ const GenomicAnalysis = () => {
 
         <Grid container spacing={3} sx={{ mb: 6, px: { xs: 2, md: 6 } }}>
            {markers.map((m, i) => (
-             <Grid item xs={12} sm={6} md={3} lg={markers.length > 4 ? 2.4 : 3} key={m.id}>
+             <Grid xs={12} sm={6} md={3} lg={markers.length > 4 ? 2.4 : 3} key={m.id}>
                <BiomarkerNode data={m} index={i} />
              </Grid>
            ))}
@@ -489,7 +489,7 @@ const GenomicAnalysis = () => {
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ marginBottom: '48px', padding: '0px 0px' }}>
                         <Box className="variant-panel" sx={{ p: 4, bgcolor: 'rgba(0, 240, 255, 0.03)', border: '1px solid rgba(0, 240, 255, 0.15)' }}>
                             <Grid container spacing={4} alignItems="center">
-                                <Grid item xs={12} md={3}>
+                                <Grid xs={12} md={3}>
                                     <Box sx={{ textAlign: 'center' }}>
                                         <Typography variant="overline" sx={{ color: colors.cyan, fontWeight: 700, letterSpacing: '2px' }}>VCF INSIGHTS</Typography>
                                         <Typography variant="h3" sx={{ color: '#fff', fontFamily: 'Rajdhani', fontWeight: 800 }}>
@@ -498,27 +498,27 @@ const GenomicAnalysis = () => {
                                         <Typography variant="body2" sx={{ color: colors.muted }}>Actionable Variants</Typography>
                                     </Box>
                                 </Grid>
-                                <Grid item xs={12} md={9}>
+                                <Grid xs={12} md={9}>
                                     <Grid container spacing={2}>
-                                                                        <Grid item xs={6} sm={3}>
+                                                                        <Grid xs={6} sm={3}>
                                                                             <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
                                                                                 <Typography variant="h6" sx={{ color: colors.purple }}>{patientData.vcfAnalysis.stats?.total_vcf_rows || 0}</Typography>
                                                                                 <Typography variant="caption" sx={{ color: colors.muted }}>Total Variants</Typography>
                                                                             </Box>
                                                                         </Grid>
-                                                                        <Grid item xs={6} sm={3}>
+                                                                        <Grid xs={6} sm={3}>
                                                                             <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
                                                                                 <Typography variant="h6" sx={{ color: colors.cyan }}>{patientData.vcfAnalysis.stats?.high_impact || 0}</Typography>
                                                                                 <Typography variant="caption" sx={{ color: colors.muted }}>High Impact</Typography>
                                                                             </Box>
                                                                         </Grid>
-                                                                        <Grid item xs={6} sm={3}>
+                                                                        <Grid xs={6} sm={3}>
                                                                             <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
                                                                                 <Typography variant="h6" sx={{ color: colors.amber }}>{patientData.vcfAnalysis.stats?.med_impact || 0}</Typography>
                                                                                 <Typography variant="caption" sx={{ color: colors.muted }}>Med Impact</Typography>
                                                                             </Box>
                                                                         </Grid>
-                                                                        <Grid item xs={6} sm={3}>
+                                                                        <Grid xs={6} sm={3}>
                                                                             <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px', textAlign: 'center' }}>
                                                                                 <Typography variant="h6" sx={{ color: colors.muted }}>{patientData.vcfAnalysis.stats?.low_impact || 0}</Typography>
                                                                                 <Typography variant="caption" sx={{ color: colors.muted }}>Low Impact</Typography>
@@ -538,7 +538,7 @@ const GenomicAnalysis = () => {
               )}
               
               <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
-                <Grid item>
+                <Grid>
                   <Box className="variant-panel" sx={{ p: 4, height: '450px', position: 'relative' }}>
                     <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', color: '#fff', mb: 3, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1, letterSpacing: '1px' }}>
                       MOLECULAR SUBTYPE DISTRIBUTION (CLINICAL PHENOTYPING)
@@ -568,7 +568,7 @@ const GenomicAnalysis = () => {
               </Grid>
 
               <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
-                <Grid item>
+                <Grid>
                   <Box className="variant-panel" sx={{ p: 4, height: '450px' }}>
                     <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', color: '#fff', mb: 3, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1, letterSpacing: '1px' }}>
                       TREATMENT SENSITIVITY PREDICTIONS (DRUG EFFICACY)
@@ -606,7 +606,7 @@ const GenomicAnalysis = () => {
               </Grid>
 
               <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Box className="variant-panel">
                     <Box className="variant-panel-header">
                       <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>DETECTED VARIANTS & ACTIONABILITY</Typography>
@@ -642,7 +642,7 @@ const GenomicAnalysis = () => {
               </Grid>
 
               <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Box className="variant-panel summary-panel" sx={{ border: `1px solid ${colors.purple}`, bgcolor: `${colors.purple}05`, p: 4 }}>
                     <Box className="summary-classification-row">
                       <WarningAmberIcon sx={{ color: colors.purple }} />

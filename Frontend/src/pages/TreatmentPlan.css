@@ -1,310 +1,282 @@
-/* --- TREATMENT PLAN THEMED STYLES --- */
+/* --- PROFESSIONAL TREATMENT PLAN THEME --- */
 
 .treatment-plan-root {
-    background: #0B1221;
+    background: #070B14; /* Deeper clinical background */
     min-height: 100vh;
     color: #F8FAFC;
+    font-family: 'Inter', sans-serif;
 }
 
 .fluid-container {
-    padding: 2rem 4rem;
-    max-width: 1400px;
+    padding: 3rem 6rem;
+    max-width: 1600px;
     margin: 0 auto;
 }
 
-/* Header */
-.console-header {
-    margin-bottom: 2rem;
+/* Intelligence Panel - High Visibility */
+.intelligence-panel {
+    background: linear-gradient(135deg, rgba(91, 111, 246, 0.15) 0%, rgba(124, 92, 255, 0.05) 100%);
+    border: 1px solid rgba(91, 111, 246, 0.4);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(91, 111, 246, 0.1);
 }
 
-.page-title {
-    font-family: "Rajdhani", sans-serif;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 0.5rem;
+.intelligence-panel::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #5B6FF6;
 }
 
-.page-subtitle {
-    color: #64748B;
-    font-family: "Space Grotesk", sans-serif;
-    max-width: 600px;
+.intelligence-icon-box {
+    background: rgba(91, 111, 246, 0.2);
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(91, 111, 246, 0.3);
 }
 
-/* Glass Cards */
-.card-glass {
-    background: rgba(22, 32, 50, 0.85);
-    border: 1px solid rgba(5, 151, 137, 0.3);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 2rem;
-}
-
-.section-title {
-    font-family: "Rajdhani", sans-serif;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 1.5rem;
-    text-transform: uppercase;
-}
-
-/* Params Display */
-.params-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1.5rem;
-}
-
-.param-display {
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.param-label {
-    font-size: 0.75rem;
-    color: #64748B;
-    display: block;
-    margin-bottom: 0.25rem;
-    font-family: "Space Grotesk", sans-serif;
-}
-
-.param-value {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #fff;
-    font-family: "Rajdhani", sans-serif;
-}
-
-.param-value.highlight {
-    color: #00F0FF;
-    font-weight: 700;
-}
-
-/* Primary Recommendation */
+/* Protocol Card - Primary Focus */
 .recommendation-card {
-    background: linear-gradient(135deg, rgba(22, 32, 50, 0.85) 0%, rgba(5, 151, 137, 0.1) 100%);
-    border: 1px solid #059789;
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 0 30px rgba(5, 151, 137, 0.2);
+    background: #0F172A;
+    border: 1px solid rgba(33, 212, 189, 0.3);
+    border-radius: 18px;
+    padding: 3rem;
+    margin-bottom: 3rem;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
 .protocol-badge {
-    background: #059789;
-    color: #fff;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    background: rgba(33, 212, 189, 0.15);
+    color: #21D4BD;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
     font-weight: 800;
-    font-family: "Rajdhani", sans-serif;
-    letter-spacing: 1px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 1px solid rgba(33, 212, 189, 0.3);
 }
 
 .protocol-name {
     font-family: "Rajdhani", sans-serif;
     font-weight: 700;
-    font-size: 2rem;
+    font-size: 2.75rem;
     color: #fff;
-    margin: 1rem 0;
+    margin: 1.5rem 0;
+    letter-spacing: -1px;
 }
 
-.protocol-desc {
-    white-space: pre-wrap;
-    color: #e2e8f0;
-    font-size: 1rem;
-    font-family: "Space Grotesk", sans-serif;
-    line-height: 1.6;
-    max-width: 90%;
+/* Differential Logic Grid */
+.logic-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.5rem !important;
+    margin-top: 2rem;
 }
 
-.plan-details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
-    margin-top: 1rem;
+.logic-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
 }
 
-@media (max-width: 768px) {
-    .plan-details-grid {
-        grid-template-columns: 1fr;
-    }
+.logic-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
 }
 
-.plan-detail-section {
-    background: rgba(255, 255, 255, 0.02);
-    padding: 1.25rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
+.logic-card.highlight-cyan { border-top: 3px solid #00F0FF; }
+.logic-card.highlight-purple { border-top: 3px solid #7C5CFF; }
+.logic-card.highlight-amber { border-top: 3px solid #F59E0B; }
 
-.plan-list {
-    margin: 0.5rem 0 0 0;
-    padding-left: 1.25rem;
-    color: #cbd5e1;
-    font-family: "Space Grotesk", sans-serif;
-    font-size: 0.95rem;
-}
-
-.plan-list li {
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
-}
-
-.guideline-badge {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
-    border-radius: 8px;
+.logic-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #64748B;
-    font-family: "Space Grotesk", sans-serif;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.logic-title {
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.logic-desc {
     font-size: 0.875rem;
+    color: #94A3B8;
+    line-height: 1.6;
+    font-family: "Inter", sans-serif;
 }
 
 /* Confidence Meter */
-.confidence-meter {
-    margin-top: 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    height: 24px;
-    border-radius: 12px;
-    overflow: hidden;
+.confidence-bar-container {
+    margin-top: 3rem;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 99px;
     position: relative;
+    overflow: visible;
 }
 
-.confidence-fill {
-    background: linear-gradient(90deg, #059789, #00F0FF);
+.confidence-bar-fill {
     height: 100%;
+    background: linear-gradient(90deg, #5B6FF6, #21D4BD);
+    border-radius: 99px;
+    position: relative;
+    transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.confidence-label {
+    position: absolute;
+    right: 0;
+    top: -30px;
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    color: #21D4BD;
+    font-size: 1.1rem;
+}
+
+/* General Layout Items */
+.card-glass {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 2rem;
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: #000;
-    font-weight: 700;
-    font-family: "Rajdhani", sans-serif;
-    font-size: 0.875rem;
-    transition: width 1s ease-out;
+    gap: 12px;
 }
 
-/* Protocol Grid */
-.protocol-comparison-grid {
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 24px;
+    background: #5B6FF6;
+    border-radius: 2px;
+}
+
+.params-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.param-display {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1.25rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.param-label {
+    font-size: 0.65rem;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.param-value {
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #fff;
+}
+
+.param-value.highlight { color: #21D4BD; }
+
+/* Protocol Comparison Grid */
+.protocol-comparison-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.5rem !important;
+    margin-bottom: 3rem;
     width: 100%;
 }
 
 @media (max-width: 1200px) {
     .protocol-comparison-grid {
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-.protocol-option-card {
+@media (max-width: 768px) {
+    .protocol-comparison-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Timeline bar styles */
+.timeline-item {
+    padding: 1rem;
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 1.5rem;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.protocol-option-card.recommended {
-    background: rgba(5, 151, 137, 0.1);
-    border-color: #059789;
-}
-
-.protocol-option-score {
-    font-size: 2.5rem;
-    font-weight: 700;
-    font-family: "Rajdhani", sans-serif;
-    line-height: 1;
-    margin-top: 0.5rem;
-}
-
-.score-teal { color: #059789; }
-.score-muted { color: #64748B; }
-
-.protocol-option-details {
-    list-style: none;
-    padding: 0;
-    margin: 1.5rem 0 0 0;
-}
-
-.detail-row {
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #e2e8f0;
-    font-family: "Space Grotesk", sans-serif;
-}
-
-/* Evidence Section */
-.evidence-section {
-    margin-bottom: 1.5rem;
-    border-left: 2px solid #00F0FF;
-    padding-left: 1rem;
-}
-
-/* Stats Cards */
-.grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-.stat-card {
-    background: rgba(255, 255, 255, 0.03);
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    font-family: "Rajdhani", sans-serif;
-    margin-bottom: 0.5rem;
-}
-
-/* Footer Buttons */
-.action-footer {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    padding-bottom: 4rem;
 }
 
 .btn-tech {
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
+    padding: 14px 32px;
+    border-radius: 12px;
     font-family: "Rajdhani", sans-serif;
     font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
-    transition: all 0.3s;
 }
 
-.btn-outline { background: transparent; border: 1px solid rgba(5, 151, 137, 0.3); color: #fff; }
-.btn-primary-gradient { 
-    background: linear-gradient(45deg, #059789, #00F0FF); 
-    border: none; color: #000; 
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+.btn-primary-gradient {
+    background: linear-gradient(135deg, #5B6FF6 0%, #7C5CFF 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 10px 30px rgba(91, 111, 246, 0.3);
 }
-.btn-secondary-glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(5, 151, 137, 0.3); color: #00F0FF; }
-.btn-warning-glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(5, 151, 137, 0.3); color: #F59E0B; }
 
-/* Animations */
-@keyframes progress-shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
+.btn-primary-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(91, 111, 246, 0.4);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94A3B8;
+}
+
+.btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
 }

@@ -282,25 +282,25 @@ function Histopathology() {
 
                 <Box sx={{ p: 4 }}>
                   <Grid container spacing={4}>
-                    <Grid item xs={12} md={5}>
+                    <Grid xs={12} md={5}>
                       <Typography variant="overline" sx={{ color: getThemeColor(analysisResult.extracted_data?.cancer_type), display: 'block', mb: 2, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '2px' }}>
                         {analysisResult.extracted_data?.cancer_type?.toUpperCase()} BIOMARKERS
                       </Typography>
                       {renderMarkers(analysisResult.extracted_data?.cancer_type, analysisResult.extracted_data)}
                     </Grid>
 
-                    <Grid item xs={false} md={1} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
+                    <Grid xs={false} md={1} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
                       <Divider orientation="vertical" sx={{ borderColor: 'rgba(255,255,255,0.1)', height: '100%' }} />
                     </Grid>
 
-                    <Grid item xs={12} md={6}>
+                    <Grid xs={12} md={6}>
                       <Box sx={{ mb: 2 }}>
                         <Chip label={(analysisResult.extracted_data?.cancer_type || 'UNKNOWN').toUpperCase()} sx={{ bgcolor: getThemeColor(analysisResult.extracted_data?.cancer_type), color: '#000', fontFamily: '"Rajdhani"', fontWeight: 800, px: 1.5 }} />
                       </Box>
                       <ClinicalField label="Primary Diagnosis" value={analysisResult.extracted_data?.diagnosis} icon={<LocalHospitalIcon />} large color={getThemeColor(analysisResult.extracted_data?.cancer_type)} />
                       
                       <Grid container spacing={3}>
-                        <Grid item xs={6}>
+                        <Grid xs={6}>
                           <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mb: 1, fontWeight: 700 }}>
                             {analysisResult.extracted_data?.cancer_type?.toLowerCase() === 'liver' ? 'BCLC STAGE' : 'TNM STAGE'}
                           </Typography>
@@ -308,7 +308,7 @@ function Histopathology() {
                             {analysisResult.extracted_data?.stage || '---'}
                           </Typography>
                         </Grid>
-                        <Grid item xs={6}>
+                        <Grid xs={6}>
                           <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mb: 1, fontWeight: 700 }}>
                             {analysisResult.extracted_data?.cancer_type?.toLowerCase() === 'brain' ? 'WHO GRADE' : 'GRADE'}
                           </Typography>

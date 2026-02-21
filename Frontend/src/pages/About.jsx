@@ -41,7 +41,7 @@ function About() {
         <Grid container spacing={8} alignItems="center">
           
           {/* LEFT: The Narrative (Animated Text) */}
-          <Grid item xs={12} md={8}>
+          <Grid xs={12} md={8}>
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -80,7 +80,7 @@ function About() {
           </Grid>
 
           {/* RIGHT: The "Live" Stats Grid */}
-          <Grid item xs={12} md={4}>
+          <Grid xs={12} md={4}>
             <div className="stats-column">
               {stats.map((stat, index) => (
                 <motion.div

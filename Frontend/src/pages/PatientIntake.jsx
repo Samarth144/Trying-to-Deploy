@@ -519,7 +519,7 @@ const PatientIntake = () => {
     <Box className="intake-container">
       <Grid container spacing={4} className="intake-grid">
         {currentStep === 1 && (
-          <Grid item xs={12} className="preview-column">
+          <Grid xs={12} className="preview-column">
             <div className="preview-layout-row" style={{ display: 'flex', gap: '32px', alignItems: 'stretch', flexWrap: 'wrap' }}>
               <Box className="preview-wrapper" style={{ flex: 1, minWidth: '350px' }}>
                 <Typography variant="h3" className="page-title">NEW CASE</Typography>
@@ -568,7 +568,7 @@ const PatientIntake = () => {
           </Grid>
         )}
 
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <TechStepper activeStep={currentStep} />
           <AnimatePresence mode="wait">
             {currentStep === 1 ? (
@@ -579,7 +579,7 @@ const PatientIntake = () => {
                     <span className="req-badge">REQ_FIELDS: ALL</span>
                   </div>
                   <Grid container spacing={4}>
-                    <Grid item xs={12} md={9}>
+                    <Grid xs={12} md={9}>
                       <div className="form-inputs-col">
                         <TextField fullWidth label="Full Legal Name" variant="outlined" className="tech-input fixed-width"
                           value={formData.name} onChange={(e) => handleChange('name', e.target.value)}
@@ -598,14 +598,14 @@ const PatientIntake = () => {
                           InputProps={{ startAdornment: <InputAdornment position="start"><LocalPhoneOutlinedIcon /></InputAdornment> }}
                         />
                         <Grid container spacing={3}>
-                          <Grid item xs={6}>
+                          <Grid xs={6}>
                             <TextField fullWidth type="date" label="Date of Birth" className="tech-input fixed-width"
                               value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)}
                               InputLabelProps={{ shrink: true }}
                               InputProps={{ startAdornment: <InputAdornment position="start"><CalendarMonthOutlinedIcon /></InputAdornment> }}
                             />
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid xs={6}>
                             <TextField fullWidth type="date" label="Date of Diagnosis" className="tech-input fixed-width"
                               value={formData.diagnosisDate} onChange={(e) => handleChange('diagnosisDate', e.target.value)}
                               InputLabelProps={{ shrink: true }}
@@ -615,7 +615,7 @@ const PatientIntake = () => {
                         </Grid>
                       </div>
                     </Grid>
-                    <Grid item xs={12} md={3}>
+                    <Grid xs={12} md={3}>
                       <Typography className="field-label">Biological Sex / Gender</Typography>
                       <div className="gender-selection-col">
                         <GenderTile label="MALE" icon={<MaleIcon />} selected={formData.gender === 'male'} onClick={() => handleChange('gender', 'male')} />
@@ -658,7 +658,7 @@ const PatientIntake = () => {
                   <Grid container spacing={4} className="mri-grid">
                     {formData.cancerType === 'Brain' ? (
                       (IMAGING_PROTOCOLS[formData.cancerType] || IMAGING_PROTOCOLS.Brain).map((protocol, index) => (
-                        <Grid item xs={12} className="mri-grid-item" key={protocol.id}>
+                        <Grid xs={12} className="mri-grid-item" key={protocol.id}>
                           <UploadZone 
                             type={protocol.id.replace('_', ' ')} 
                             label={protocol.label} 
@@ -670,7 +670,7 @@ const PatientIntake = () => {
                         </Grid>
                       ))
                     ) : (
-                      <Grid item xs={12}>
+                      <Grid xs={12}>
                         <Box sx={{ 
                           textAlign: 'center', py: 10, border: '2px dashed rgba(255,255,255,0.1)', 
                           borderRadius: '20px', background: 'rgba(255,255,255,0.02)' 
@@ -729,7 +729,7 @@ const PatientIntake = () => {
                   </div>
                   <Grid container spacing={3}>
                     {(GENOMIC_MARKERS[formData.cancerType] || GENOMIC_MARKERS.Brain).map((m) => (
-                      <Grid item xs={12} key={m.id}>
+                      <Grid xs={12} key={m.id}>
                         <MolecularSwitch 
                           label={m.label} sub={m.sub} icon={m.icon} options={m.options} 
                           value={formData[m.id]} onChange={(val) => handleChange(m.id, val)}
@@ -757,7 +757,7 @@ const PatientIntake = () => {
                     <span className="req-badge">PATIENT PERFORMANCE</span>
                   </div>
                                                       <Grid container spacing={2} className="performance-grid">
-                                                        <Grid item xs={12} md={3}>
+                                                        <Grid xs={12} md={3}>
                                                           <div className="performance-terminal-box" style={{ '--kps-color': getKPSColor(formData.kps) }}>
                                                             <div className="score-header">
                                                               <Typography className="kps-label">KPS Score</Typography>
@@ -775,7 +775,7 @@ const PatientIntake = () => {
                                                           </div>
                                                         </Grid>
                                     
-                                                        <Grid item xs={12} md={3}>
+                                                        <Grid xs={12} md={3}>
                                                           <div className="performance-terminal-box">
                                                             <Typography className="ecog-label">ECOG Score (0-4)</Typography>
                                                             <div className="ecog-selector">
@@ -792,7 +792,7 @@ const PatientIntake = () => {
                                                           </div>
                                                         </Grid>
                                     
-                                                        <Grid item xs={12} md={3}>
+                                                        <Grid xs={12} md={3}>
                                                           <TagInput 
                                                             label="SYMPTOMS" icon={<MedicalServicesIcon />}
                                                             tags={formData.symptoms ? formData.symptoms.split(',').filter(s => s) : []}
@@ -800,7 +800,7 @@ const PatientIntake = () => {
                                                             onDelete={(t) => handleChange('symptoms', formData.symptoms.split(',').filter(x => x !== t).join(','))}
                                                           />
                                                         </Grid>
-                                                        <Grid item xs={12} md={3}>
+                                                        <Grid xs={12} md={3}>
                                                           <TagInput 
                                                             label="COMORBIDITIES" icon={<FavoriteBorderIcon />}
                                                             tags={formData.comorbidities ? formData.comorbidities.split(',').filter(s => s) : []}
@@ -826,7 +826,7 @@ const PatientIntake = () => {
 
                   <Grid container spacing={3}>
                     {/* 1. IDENTITY BLOCK */}
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                       <ReviewBlock title="PATIENT IDENTITY" icon={<FingerprintIcon />} onEdit={() => setCurrentStep(1)}>
                         <div className="review-data-stack">
                           <div>
@@ -852,7 +852,7 @@ const PatientIntake = () => {
                     </Grid>
 
                     {/* 2. MRI ACQUISITION BLOCK */}
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                       <ReviewBlock 
                         title="IMAGING DATA" 
                         icon={<ViewInArIcon />} 
@@ -882,7 +882,7 @@ const PatientIntake = () => {
                     </Grid>
 
                     {/* 3. MOLECULAR PROFILE BLOCK */}
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                       <ReviewBlock title="GENOMIC PROFILE" icon={<BiotechIcon />} onEdit={() => setCurrentStep(3)}>
                         <div className="genomic-review-stack">
                           {(GENOMIC_MARKERS[formData.cancerType] || GENOMIC_MARKERS.Brain).map((m, index, arr) => (
@@ -899,7 +899,7 @@ const PatientIntake = () => {
                     </Grid>
 
                     {/* 4. VCF ANALYSIS BLOCK */}
-                    <Grid item xs={12} md={4}>
+                    <Grid xs={12} md={4}>
                       <ReviewBlock 
                         title="VCF ANALYSIS" 
                         icon={<ScatterPlotIcon />} 

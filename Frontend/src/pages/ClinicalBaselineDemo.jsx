@@ -22,7 +22,7 @@ const ClinicalBaselineDemo = () => {
 
       <Container maxWidth="xl">
         <Grid container spacing={4}>
-          <Grid item xs={12}>
+          <Grid xs={12}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -45,7 +45,7 @@ const ClinicalBaselineDemo = () => {
                 </Typography>
 
                 <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <Box sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <Typography variant="overline" sx={{ color: '#059789', fontWeight: 700 }}>Vital Signs & Status</Typography>
                       <Box sx={{ mt: 2 }}>
@@ -58,7 +58,7 @@ const ClinicalBaselineDemo = () => {
                       </Box>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <Box sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <Typography variant="overline" sx={{ color: '#F59E0B', fontWeight: 700 }}>Next Clinical Steps</Typography>
                       <Box sx={{ mt: 2 }}>

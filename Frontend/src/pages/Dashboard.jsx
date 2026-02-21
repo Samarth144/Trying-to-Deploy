@@ -262,7 +262,7 @@ const Dashboard = () => {
 
           <Grid container spacing={4}>
             {/* NEW: PERSONAL IDENTITY CARD */}
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Card sx={{
                 bgcolor: 'rgba(5, 151, 137, 0.1)',
                 border: `1px solid ${colors.teal}`,
@@ -288,15 +288,15 @@ const Dashboard = () => {
                     </Box>
 
                     <Grid container spacing={4} sx={{ width: { xs: '100%', md: 'auto' }, minWidth: { md: '400px' } }}>
-                      <Grid item xs={6} md={4}>
+                      <Grid xs={6} md={4}>
                         <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>DATE OF BIRTH</Typography>
                         <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.dob ? new Date(patientData.dob).toLocaleDateString() : '---'}</Typography>
                       </Grid>
-                      <Grid item xs={6} md={4}>
+                      <Grid xs={6} md={4}>
                         <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>GENDER</Typography>
                         <Typography sx={{ color: '#fff', fontWeight: 600, textTransform: 'uppercase' }}>{patientData?.gender || '---'}</Typography>
                       </Grid>
-                      <Grid item xs={12} md={4}>
+                      <Grid xs={12} md={4}>
                         <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>CONTACT</Typography>
                         <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.phone || user?.email}</Typography>
                       </Grid>
@@ -309,7 +309,7 @@ const Dashboard = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
                 <CardContent sx={{ p: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -332,7 +332,7 @@ const Dashboard = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
                 <CardContent sx={{ p: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -355,7 +355,7 @@ const Dashboard = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
                 <CardContent sx={{ p: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
