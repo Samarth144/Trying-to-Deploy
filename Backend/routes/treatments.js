@@ -7,7 +7,8 @@ const {
     updateTreatment,
     approveTreatment,
     generateFormattedPlan,
-    generatePathway
+    generatePathway,
+    queryTreatmentPlan
 } = require('../controllers/treatmentController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -29,5 +30,8 @@ router.route('/:id')
 
 router.route('/:id/approve')
     .post(protect, authorize('oncologist', 'admin'), approveTreatment);
+
+router.route('/:id/query')
+    .post(protect, queryTreatmentPlan);
 
 module.exports = router;

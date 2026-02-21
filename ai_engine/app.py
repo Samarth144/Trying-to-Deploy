@@ -1,7 +1,22 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+if os.path.exists('../Backend/.env'):
+    load_dotenv('../Backend/.env')
+else:
+    load_dotenv()
+
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    print(f"[AI ENGINE] Gemini API Key detected (starts with: {api_key[:4]}...)")
+else:
+    print("[AI ENGINE] WARNING: GEMINI_API_KEY NOT FOUND. System will use local fallback model.")
+
 from rule_engine import run_rules
-from llm.llm_chain import generate_treatment_plan, predict_outcomes
+from llm.llm_chain import generate_treatment_plan, predict_outcomes, query_treatment_plan
 from utils.vcf_parser import parse_vcf
 from utils.formatter import format_multimodal_data # Import the new formatter
 from utils.outcome_engine import engine as outcome_engine # Import the new Outcome Engine
@@ -666,6 +681,68 @@ def predict_side_effects_route():
         traceback.print_exc() # Print full traceback
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/chat', methods=['POST'])
+def chat_with_system():
+    try:
+        data = request.get_json()
+        if not isinstance(data, dict):
+            return jsonify({"error": "Invalid request format, expected JSON object"}), 400
+            
+        query = data.get('query')
+        history = data.get('history', [])
+        patient_data = data.get('patient_data', {})
+        plan_data = data.get('plan_data', {})
+        
+        # Ensure patient_data is a dict
+        if isinstance(patient_data, str):
+            try:
+                import json
+                parsed = json.loads(patient_data)
+                patient_data = parsed if isinstance(parsed, dict) else {}
+            except:
+                patient_data = {}
+        
+        # Ensure plan_data is a dict
+        if isinstance(plan_data, str):
+            try:
+                import json
+                parsed = json.loads(plan_data)
+                plan_data = parsed if isinstance(parsed, dict) else {}
+            except:
+                plan_data = {}
+                
+        # Final safety check
+        if not isinstance(patient_data, dict): patient_data = {}
+        if not isinstance(plan_data, dict): plan_data = {}
+                
+        cancer_type = patient_data.get('cancer_type', 'cancer') if isinstance(patient_data, dict) else 'cancer'
+
+        print(f"[CHAT] Received query: {query}")
+
+        if not query:
+            return jsonify({"error": "No query provided"}), 400
+
+        # Format patient and plan context for the LLM
+        multimodal_summary = format_multimodal_data(patient_data)
+        
+        response, evidence = query_treatment_plan(
+            patient=multimodal_summary,
+            plan=plan_data,
+            query=query,
+            cancer=cancer_type,
+            history=history
+        )
+
+        return jsonify({
+            'response': response,
+            'evidence': evidence
+        })
+    except Exception as e:
+        print(f"ERROR in chat_with_system: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/process_vcf', methods=['POST'])
 def process_vcf_route():

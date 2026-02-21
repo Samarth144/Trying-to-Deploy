@@ -56,6 +56,7 @@ exports.generateFormattedPlan = async (req, res) => {
                 console.log('Returning existing treatment plan from database.');
                 return res.json({
                     success: true,
+                    treatmentId: existingPlan.id,
                     confidence: existingPlan.confidence,
                     protocols: [], // We might not have saved protocol comparison in DB yet
                     data: {
@@ -92,8 +93,9 @@ exports.generateFormattedPlan = async (req, res) => {
         }
 
         // 3. Save the generated plan to DB if patientId is provided
+        let newPlanId = null;
         if (patientId) {
-            await TreatmentPlan.create({
+            const savedPlan = await TreatmentPlan.create({
                 patientId,
                 recommendedProtocol: rawPlan.primary_treatment || 'Standard Protocol',
                 confidence: parseFloat(confidence),
@@ -104,12 +106,14 @@ exports.generateFormattedPlan = async (req, res) => {
                 createdById: req.user ? req.user.id : null,
                 status: 'active'
             });
+            newPlanId = savedPlan.id;
             console.log('New treatment plan saved to database.');
         }
 
         // Step 3: Send the raw plan and formatted evidence back to the frontend.
         res.json({
             success: true,
+            treatmentId: newPlanId,
             confidence: confidence,
             protocols: protocols,
             data: {
@@ -187,6 +191,55 @@ exports.getPatientTreatments = async (req, res) => {
             data: treatments
         });
     } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// @desc    Query AI about a treatment plan
+// @route   POST /api/treatments/:id/query
+// @access  Private
+exports.queryTreatmentPlan = async (req, res) => {
+    try {
+        const { query, history } = req.body;
+        const treatmentId = req.params.id;
+
+        const treatment = await TreatmentPlan.findByPk(treatmentId, {
+            include: [{ model: Patient }]
+        });
+
+        if (!treatment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Treatment plan not found'
+            });
+        }
+
+        // Prepare context for AI Engine
+        const aiRequestData = {
+            query,
+            history: history || [],
+            patient_data: treatment.Patient ? {
+                ...treatment.Patient.toJSON(),
+                cancer_type: treatment.Patient.cancerType || 'Unknown'
+            } : { cancer_type: 'Unknown' },
+            plan_data: treatment.planData || {
+                recommendedProtocol: treatment.recommendedProtocol || 'Unknown',
+                rationale: treatment.rationale || 'No rationale provided'
+            }
+        };
+
+        console.log(`Step: Querying AI engine for treatment ${treatmentId}...`);
+        const aiResponse = await axios.post('http://127.0.0.1:5000/chat', aiRequestData);
+
+        res.json({
+            success: true,
+            data: aiResponse.data
+        });
+    } catch (error) {
+        console.error('Error in queryTreatmentPlan:', error.message);
         res.status(500).json({
             success: false,
             message: error.message

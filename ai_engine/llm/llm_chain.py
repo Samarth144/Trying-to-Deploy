@@ -5,6 +5,11 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from functools import lru_cache
 from rag.retriever_hybrid import hybrid_retrieve
 import re
+import os
+import google.generativeai as genai
+
+# Options: "google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large"
+MODEL_NAME = "google/flan-t5-small"
 
 # Options: "google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large"
 MODEL_NAME = "google/flan-t5-small"
@@ -89,6 +94,11 @@ def flatten_rule_output(rules):
 
 
 def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, queries):
+    # Configure Gemini dynamically
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
+
     rule_text = flatten_rule_output(rules)
     
     # Format evidence levels for prompt
@@ -141,12 +151,31 @@ SUPPORTING EVIDENCE:
 {evidence_text}
 """
 
-    tokenizer, model, device = load_model()
-
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
-    outputs = model.generate(**inputs, max_new_tokens=600, do_sample=False)
-
-    text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+    # If API key is missing, fallback to local model
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("[LLM] NO API KEY: Generating plan with local model...")
+        tokenizer, model, device = load_model()
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+        outputs = model.generate(**inputs, max_new_tokens=600, do_sample=False)
+        text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+    else:
+        try:
+            print(f"[LLM] CALLING GEMINI API for plan generation...")
+            model_gemini = genai.GenerativeModel('gemini-2.5-flash')
+            response_gemini = model_gemini.generate_content(prompt)
+            if hasattr(response_gemini, 'text'):
+                text = response_gemini.text.strip()
+            elif hasattr(response_gemini, 'parts'):
+                text = " ".join([p.text for p in response_gemini.parts]).strip()
+            else:
+                raise ValueError("Gemini returned no text")
+        except Exception as e:
+            print(f"ERROR calling Gemini API for plan: {e}")
+            tokenizer, model, device = load_model()
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+            outputs = model.generate(**inputs, max_new_tokens=600, do_sample=False)
+            text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
 
     # DYNAMIC FALLBACK AND STRUCTURING
     try:
@@ -210,6 +239,11 @@ SUPPORTING EVIDENCE:
     return plan_data, evidence
 
 def predict_outcomes(patient, patient_data_dict, cancer, query, queries):
+    # Configure Gemini dynamically
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
+
     # RAG evidence
     evidence = hybrid_retrieve(cancer, query, queries)
     evidence_text = "\n".join([f"[{i+1}] {e['text']}" for i, e in enumerate(evidence)])
@@ -263,13 +297,31 @@ SUPPORTING EVIDENCE:
 {evidence_text}
 """
 
-    tokenizer, model, device = load_model()
+    # If API key is missing, fallback to local model
+    if not os.getenv("GEMINI_API_KEY"):
+        print("[LLM] Falling back to local model for outcome prediction...")
+        tokenizer, model, device = load_model()
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+        outputs = model.generate(**inputs, max_new_tokens=550, do_sample=False)
+        text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+    else:
+        try:
+            model_gemini = genai.GenerativeModel('gemini-2.5-flash')
+            response_gemini = model_gemini.generate_content(prompt)
+            if hasattr(response_gemini, 'text'):
+                text = response_gemini.text.strip()
+            elif hasattr(response_gemini, 'parts'):
+                text = " ".join([p.text for p in response_gemini.parts]).strip()
+            else:
+                raise ValueError("Gemini returned no text")
+        except Exception as e:
+            print(f"ERROR calling Gemini API for outcomes: {e}")
+            tokenizer, model, device = load_model()
+            inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+            outputs = model.generate(**inputs, max_new_tokens=550, do_sample=False)
+            text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
 
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
-    outputs = model.generate(**inputs, max_new_tokens=550, do_sample=False)
-
-    text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-    print(f"DEBUG: Raw LLM output for outcomes:\n{text}\n---") # Debugging line
+    print(f"DEBUG: LLM output for outcomes (len: {len(text)})") # Debugging line
     try:
         import json
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
@@ -322,3 +374,88 @@ SUPPORTING EVIDENCE:
         }
 
     return outcome_data, evidence
+
+def query_treatment_plan(patient, plan, query, cancer, history=None):
+    # Configure Gemini dynamically to ensure load_dotenv() from app.py has run
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
+    
+    # RAG evidence for additional context if needed
+    try:
+        evidence = hybrid_retrieve(cancer, query, [query])
+    except Exception as e:
+        print(f"Warning: RAG retrieval failed: {e}")
+        evidence = []
+        
+    evidence_text = "\n".join([f"[{i+1}] {e['text']}" for i, e in enumerate(evidence)]) if evidence else "No additional evidence found."
+
+    # Ensure plan and patient are strings for the prompt
+    plan_str = str(plan) if not isinstance(plan, (str, bytes)) else plan
+    patient_str = str(patient) if not isinstance(patient, (str, bytes)) else patient
+
+    history_text = ""
+    if history and isinstance(history, list):
+        history_text = "\nCONVERSATION HISTORY:\n"
+        for msg in history:
+            if isinstance(msg, dict):
+                role = msg.get('role', 'user').upper()
+                content = msg.get('content', '')
+                history_text += f"{role}: {content}\n"
+            elif isinstance(msg, str):
+                history_text += f"USER: {msg}\n"
+
+    prompt = f"""
+You are an expert oncology clinical assistant. 
+Answer the doctor's query about the generated treatment plan based on the patient context, the plan details, and supporting evidence.
+
+Be concise, professional, and clinical in your response. 
+Maintain continuity with the previous conversation history if provided.
+
+PATIENT CONTEXT:
+{patient_str}
+
+GENERATED TREATMENT PLAN:
+{plan_str}
+
+SUPPORTING EVIDENCE:
+{evidence_text}
+{history_text}
+
+DOCTOR'S QUERY:
+{query}
+
+RESPONSE:
+"""
+
+    # If API key is missing, fallback to local model or return error
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("[LLM] NO API KEY: Answering query with local model...")
+        tokenizer, model, device = load_model()
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+        outputs = model.generate(**inputs, max_new_tokens=300, do_sample=False)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+        return response, evidence
+
+    try:
+        print("[LLM] CALLING GEMINI API for doctor query...")
+        model = genai.GenerativeModel('gemini-2.5-flash') 
+        response_gemini = model.generate_content(prompt)
+        
+        if hasattr(response_gemini, 'text'):
+            return response_gemini.text.strip(), evidence
+        elif hasattr(response_gemini, 'parts'):
+            return " ".join([p.text for p in response_gemini.parts]).strip(), evidence
+        else:
+            return "Gemini returned a response without text content.", evidence
+    except Exception as e:
+        print(f"ERROR calling Gemini API: {e}")
+        # Fallback to local model on API error
+        print("[LLM] Falling back to local model due to API error...")
+        tokenizer, model, device = load_model()
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+        outputs = model.generate(**inputs, max_new_tokens=300, do_sample=False)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+        return f"[Local Fallback] {response}", evidence
+    

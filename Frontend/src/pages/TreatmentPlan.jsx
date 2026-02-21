@@ -6,6 +6,7 @@ import {
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import TreatmentPlanChat from '../components/TreatmentPlanChat';
 import apiClient from '../utils/apiClient';
 import './TreatmentPlan.css';
 import {
@@ -41,7 +42,7 @@ function TreatmentPlan() {
   const location = useLocation();
   const { isPatient } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [treatmentData, setTreatmentData] = useState(null);
+  const [treatmentData, setTreatmentData] = useState({});
   const [evidence, setEvidence] = useState([]);
   const [cancerType, setCancerType] = useState('Breast');
   const [patientData, setPatientData] = useState({
@@ -102,8 +103,8 @@ function TreatmentPlan() {
     
     setLoading(true);
     // Only clear if we are forcing a refresh or have no data
-    if (forceRefresh || !treatmentData) {
-        setTreatmentData(null);
+    if (forceRefresh || !treatmentData?.id) {
+        setTreatmentData({});
         setEvidence([]);
     }
 
@@ -114,13 +115,15 @@ function TreatmentPlan() {
 
       const { rawPlan, formattedEvidence } = result.data;
 
-      setTreatmentData({
+      setTreatmentData(prev => ({
+        ...prev,
+        id: result.treatmentId,
         recommendedProtocol: rawPlan.primary_treatment || 'See plan details',
         confidence: result.confidence || 92.0,
         planData: rawPlan,
         guidelineAlignment: 'AI-Generated Evidence Base',
         protocols: result.protocols || []
-      });
+      }));
       
       // Use the Gemini-formatted evidence
       setEvidence([{ source: 'AI Clinical Summary', text: formattedEvidence }]);
@@ -478,7 +481,7 @@ function TreatmentPlan() {
               Evidence-based protocol optimization using multimodal data integration.
             </Typography>
           </div>
-          {treatmentData && (
+          {treatmentData?.id && (
             <Button 
               variant="outlined" 
               startIcon={<AutoAwesomeIcon />}
@@ -542,18 +545,26 @@ function TreatmentPlan() {
                 <div className="plan-detail-section">
                     <label className="param-label">ALTERNATIVE OPTIONS</label>
                     <ul className="plan-list">
-                        {treatmentData.planData.alternatives?.map((alt, i) => (
-                            <li key={i}>{alt}</li>
-                        ))}
+                        {Array.isArray(treatmentData.planData.alternatives) ? (
+                            treatmentData.planData.alternatives.map((alt, i) => (
+                                <li key={i}>{alt}</li>
+                            ))
+                        ) : (
+                            <li>{treatmentData.planData.alternatives || 'None provided'}</li>
+                        )}
                     </ul>
                 </div>
 
                 <div className="plan-detail-section">
                     <label className="param-label" style={{ color: '#EF4444' }}>SAFETY ALERTS & CONTRAINDICATIONS</label>
                     <ul className="plan-list">
-                        {treatmentData.planData.safety_alerts?.map((alert, i) => (
-                            <li key={i} style={{ color: '#FCA5A5' }}>{alert}</li>
-                        ))}
+                        {Array.isArray(treatmentData.planData.safety_alerts) ? (
+                            treatmentData.planData.safety_alerts.map((alert, i) => (
+                                <li key={i} style={{ color: '#FCA5A5' }}>{alert}</li>
+                            ))
+                        ) : (
+                            <li style={{ color: '#FCA5A5' }}>{treatmentData.planData.safety_alerts || 'No immediate safety alerts.'}</li>
+                        )}
                     </ul>
                 </div>
             </div>
@@ -653,6 +664,15 @@ function TreatmentPlan() {
                   SIMULATE PATHWAY
               </button>
           </div>
+        )}
+
+        {/* CHAT INTERFACE FOR DOCTORS */}
+        {treatmentData && treatmentData.id && !isPatient && (
+            <TreatmentPlanChat 
+                treatmentId={treatmentData.id} 
+                patientData={{...patientData, cancer_type: cancerType}}
+                planData={treatmentData.planData}
+            />
         )}
       </div>
     </div>
