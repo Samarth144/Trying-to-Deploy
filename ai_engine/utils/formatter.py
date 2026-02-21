@@ -80,7 +80,16 @@ def format_multimodal_data(patient_data):
     # 4. Summarize Core Clinical Info
     summary_lines.append("Clinical Profile Summary:")
     summary_lines.append(f"- Age: {patient_data.get('age', 'N/A')}, KPS: {patient_data.get('KPS', patient_data.get('kps', 'N/A'))}")
-    summary_lines.append(f"- Cancer Type: {patient_data.get('cancer_type', 'N/A')}, Stage: {patient_data.get('stage', 'N/A')}")
+    summary_lines.append(f"- Cancer Type: {patient_data.get('cancer_type', patient_data.get('cancerType', 'N/A'))}, Stage: {patient_data.get('stage', 'N/A')}")
+    
+    symptoms = patient_data.get('symptoms', '')
+    if symptoms:
+        summary_lines.append(f"- Reported Symptoms: {symptoms}")
+        
+    comorbidities = patient_data.get('comorbidities', '')
+    if comorbidities:
+        summary_lines.append(f"- Existing Comorbidities: {comorbidities}")
+        
     summary_lines.append("\n")
 
     if not summary_lines:

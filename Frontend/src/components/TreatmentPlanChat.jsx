@@ -5,6 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ChatIcon from '@mui/icons-material/Chat';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import apiClient from '../utils/apiClient';
+import ReactMarkdown from 'react-markdown';
 
 const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -87,8 +88,8 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                 position: 'fixed',
                 bottom: 32,
                 right: 32,
-                width: 420,
-                height: 550,
+                width: 500, // Increased width
+                height: 700, // Increased height
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: '#0F172A',
@@ -131,10 +132,19 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                             p: 2,
                             borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                             border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                            boxShadow: msg.role === 'user' ? '0 4px 12px rgba(91, 111, 246, 0.2)' : 'none'
+                            boxShadow: msg.role === 'user' ? '0 4px 12px rgba(91, 111, 246, 0.2)' : 'none',
+                            '& p': { margin: 0, mb: 1, fontFamily: 'Space Grotesk', fontSize: '0.9rem', lineHeight: 1.5 },
+                            '& h3, & h4': { color: '#21D4BD', fontFamily: 'Rajdhani', fontWeight: 700, mt: 1, mb: 1, textTransform: 'uppercase', fontSize: '1rem' },
+                            '& ul, & ol': { pl: 2, mb: 1 },
+                            '& li': { mb: 0.5, fontFamily: 'Space Grotesk', fontSize: '0.85rem' },
+                            '& strong': { color: '#00F0FF', fontWeight: 700 }
                         }}
                     >
-                        <Typography variant="body2" sx={{ fontFamily: 'Space Grotesk', lineHeight: 1.5, fontSize: '0.9rem' }}>{msg.content}</Typography>
+                        {msg.role === 'assistant' ? (
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        ) : (
+                            <Typography variant="body2" sx={{ fontFamily: 'Space Grotesk', lineHeight: 1.5, fontSize: '0.9rem' }}>{msg.content}</Typography>
+                        )}
                     </Box>
                 ))}
                 {loading && (

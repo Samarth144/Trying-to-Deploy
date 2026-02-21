@@ -96,6 +96,11 @@ exports.generateFormattedPlan = async (req, res) => {
             formattedEvidence = "No specific evidence provided for formatting.";
         }
 
+        // CRITICAL FIX: Ensure formattedEvidence is a string (prevent Sequelize object error)
+        if (typeof formattedEvidence !== 'string') {
+            formattedEvidence = JSON.stringify(formattedEvidence, null, 2);
+        }
+
         // 3. Save the generated plan to DB if patientId is provided
         let newPlanId = null;
         if (patientId) {
@@ -221,14 +226,11 @@ exports.queryTreatmentPlan = async (req, res) => {
             });
         }
 
-        // Prepare context for AI Engine
+        // Prepare context for AI Engine - SEND FULL RAW DATA
         const aiRequestData = {
             query,
             history: history || [],
-            patient_data: treatment.Patient ? {
-                ...treatment.Patient.toJSON(),
-                cancer_type: treatment.Patient.cancerType || 'Unknown'
-            } : { cancer_type: 'Unknown' },
+            patient_data: treatment.Patient ? treatment.Patient.toJSON() : {},
             plan_data: treatment.planData || {
                 recommendedProtocol: treatment.recommendedProtocol || 'Unknown',
                 rationale: treatment.rationale || 'No rationale provided'
