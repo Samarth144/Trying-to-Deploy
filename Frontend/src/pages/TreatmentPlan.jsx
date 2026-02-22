@@ -9,6 +9,7 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import TreatmentPlanChat from '../components/TreatmentPlanChat';
+import ReactMarkdown from 'react-markdown';
 import apiClient from '../utils/apiClient';
 import './TreatmentPlan.css';
 import {
@@ -253,7 +254,7 @@ function TreatmentPlan() {
         protocols: result.protocols || []
       }));
       
-      // Use the Gemini-formatted evidence
+      // Use the Ollama-formatted evidence
       setEvidence([{ source: 'AI Clinical Summary', text: formattedEvidence }]);
       
       // SET EXPERIENCES (Always set from response)
@@ -346,7 +347,7 @@ function TreatmentPlan() {
                     }
                     
                     setPatientData(newData);
-                    // Always forceRefresh: true on initial load to ensure we use the latest Gemini logic
+                    // Always forceRefresh: true on initial load to ensure we use the latest Ollama logic
                     generateTreatmentPlan(null, { cancer_type: type.toLowerCase(), ...newData }, true);
                 }
             } catch (err) {
@@ -617,7 +618,9 @@ function TreatmentPlan() {
             return Object.entries(parsed).map(([key, value]) => (
                 <div key={key}>
                     <h5 style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem', fontFamily: '"Rajdhani"' }}>{key.replace(/_/g, ' ').toUpperCase()}</h5>
-                    <p style={{ marginBottom: '1rem' }}>{String(value)}</p>
+                    <div style={{ color: '#cbd5e1', marginBottom: '1rem' }}>
+                        <ReactMarkdown>{String(value)}</ReactMarkdown>
+                    </div>
                 </div>
             ));
         }
@@ -625,34 +628,7 @@ function TreatmentPlan() {
         // Not a JSON string, so process as markdown
     }
     
-    // Split by lines to handle bullet points and headers
-    const lines = text.split('\n');
-    
-    return lines.map((line, index) => {
-      let trimmedLine = line.trim();
-      
-      // Handle Bullet Points
-      if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
-        const content = trimmedLine.substring(2);
-        return (
-          <li key={index} style={{ marginBottom: '0.5rem', listStyleType: 'disc', marginLeft: '1.5rem' }}>
-            {parseBold(content)}
-          </li>
-        );
-      }
-      
-      // Handle Headers (e.g. **Header**) - if the whole line is bolded and ends with a colon or is just short
-      if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
-          return <h5 key={index} style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem', fontFamily: '"Rajdhani"' }}>{trimmedLine.replace(/\*\*/g, '')}</h5>;
-      }
-
-      // Default paragraph
-      return (
-        <p key={index} style={{ marginBottom: '1rem' }}>
-          {parseBold(trimmedLine)}
-        </p>
-      );
-    });
+    return <ReactMarkdown>{text}</ReactMarkdown>;
   };
 
   const parseBold = (text) => {
@@ -774,12 +750,12 @@ function TreatmentPlan() {
                 <div className="plan-details-grid">
                     <div className="plan-detail-section">
                         <label className="param-label">CLINICAL RATIONALE</label>
-                        <p className="protocol-desc">{treatmentData.planData.clinical_rationale}</p>
+                        <p className="protocol-desc">{renderListItem(treatmentData.planData.clinical_rationale)}</p>
                     </div>
                     
                     <div className="plan-detail-section">
                         <label className="param-label">FOLLOW-UP STRATEGY</label>
-                        <p className="protocol-desc">{treatmentData.planData.follow_up}</p>
+                        <p className="protocol-desc">{renderListItem(treatmentData.planData.follow_up)}</p>
                     </div>
 
                     <div className="plan-detail-section">
@@ -945,7 +921,7 @@ function TreatmentPlan() {
         {/* FOOTER */}
         {!isPatient && (
           <div className="action-footer">
-              <button className="btn-tech btn-outline" onClick={() => navigate(-1)}>
+              <button className="btn-tech btn-outline" onClick={() => navigate(`/genomic-analysis${location.search}`)}>
                   ← BACK
               </button>
               <button className="btn-tech btn-primary-gradient" onClick={() => navigate(`/outcome-prediction${location.search}`)}>

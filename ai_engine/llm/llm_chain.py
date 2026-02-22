@@ -4,12 +4,18 @@ import os
 import re
 import json
 import traceback
+import ollama
 from google import genai as google_genai
 from google.genai import types as google_types
 from openai import OpenAI
 from dotenv import load_dotenv
 from rag.retriever_hybrid import hybrid_retrieve
 from utils.clinical_memory import retrieve_similar_experience
+
+# --- CONFIG ---
+DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:14b")
+DEFAULT_GITHUB_MODEL = os.getenv("GITHUB_MODEL", "gpt-4o")
+DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # --- ROBUST ENV LOADING ---
 def load_clinical_env():
@@ -28,7 +34,10 @@ def load_clinical_env():
     
     return {
         "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
-        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY"),
+        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
+        "GITHUB_MODEL": os.getenv("GITHUB_MODEL", DEFAULT_GITHUB_MODEL),
+        "GEMINI_MODEL": os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
     }
 
 ENV_KEYS = load_clinical_env()
@@ -37,37 +46,66 @@ def _init_github_client():
     if not ENV_KEYS["GITHUB_TOKEN"]:
         return None
     try:
-        # No ping, just initialize
-        return OpenAI(base_url="https://models.inference.ai.azure.com", api_key=ENV_KEYS["GITHUB_TOKEN"])
+        client = OpenAI(base_url="https://models.inference.ai.azure.com", api_key=ENV_KEYS["GITHUB_TOKEN"])
+        client.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": "ping"}], max_tokens=1)
+        print(f"[LLM] SUCCESS: GitHub Models ({ENV_KEYS['GITHUB_MODEL']}) Active.")
+        return client
     except Exception as e:
-        print(f"[LLM] Error initializing GitHub client: {e}")
+        print(f"[LLM] GitHub Models check failed: {e}")
+        return None
+
+def _init_ollama_client():
+    try:
+        ollama.chat(model=ENV_KEYS["OLLAMA_MODEL"], messages=[{'role': 'user', 'content': 'ping'}], options={"num_predict": 1})
+        print(f"[LLM] SUCCESS: Ollama ({ENV_KEYS['OLLAMA_MODEL']}) Active.")
+        return ollama
+    except Exception as e:
+        print(f"[LLM] Ollama check failed: {e}")
         return None
 
 def _init_gemini_client():
     if not ENV_KEYS["GEMINI_API_KEY"]:
         return None
     try:
-        # No ping, just initialize
-        return google_genai.Client(api_key=ENV_KEYS["GEMINI_API_KEY"])
+        client = google_genai.Client(api_key=ENV_KEYS["GEMINI_API_KEY"])
+        client.models.generate_content(model=ENV_KEYS["GEMINI_MODEL"], contents="ping", config=google_types.GenerateContentConfig(max_output_tokens=1))
+        print(f"[LLM] SUCCESS: Gemini ({ENV_KEYS['GEMINI_MODEL']}) Active.")
+        return client
     except Exception as e:
         print(f"[LLM] Error initializing Gemini client: {e}")
         return None
 
-def _get_initialized_clients():
-    clients = {}
+def get_llm_provider_and_client():
+    # 1. Try GitHub Models (Primary)
     github_client = _init_github_client()
     if github_client:
-        clients["github"] = github_client
-    
+        return "github", github_client
+
+    # 2. Fallback to Ollama (Local)
+    ollama_client = _init_ollama_client()
+    if ollama_client:
+        return "ollama", ollama_client
+
+    # 3. Fallback to Gemini
     gemini_client = _init_gemini_client()
     if gemini_client:
-        clients["gemini"] = gemini_client
-        
-    return clients
+        return "gemini", gemini_client
+
+    return None, None
+
+PROVIDER, CLIENT = get_llm_provider_and_client()
 
 
 
 
+
+# Options for faster local inference
+OLLAMA_OPTIONS = {
+    "num_predict": 1024,
+    "temperature": 0.1,
+    "top_p": 0.9,
+    "num_ctx": 4096,
+}
 
 def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, queries):
     evidence = hybrid_retrieve(cancer, query, queries)
@@ -100,54 +138,38 @@ def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, quer
     PATIENT: {patient}
     RULES: {rule_summary}
     EVIDENCE: {evidence_text}
-    {historical_experience}
-    
-    INSTRUCTION: Synthesize guidelines with internal hospital experience if provided. 
-    Return ONLY valid JSON with primary_treatment, clinical_rationale, formatted_evidence (Markdown), alternatives, safety_alerts, follow_up, pathway.
+    Return ONLY valid JSON with primary_treatment, clinical_rationale, formatted_evidence, alternatives, safety_alerts, follow_up, pathway.
     """
-    
-    initialized_clients = _get_initialized_clients()
-    available_providers = ["github", "gemini"] 
 
-    while available_providers:
-        provider_name = available_providers[0] 
-        current_client = initialized_clients.get(provider_name)
+    if not CLIENT: return get_fallback_plan(rules, cancer), evidence, experiences_raw
 
-        if not current_client:
-            available_providers.pop(0) 
-            continue
+    try:
+        if PROVIDER == "github":
+            print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for TREATMENT PLAN...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1)
+            text = response.choices[0].message.content
+            print(f"[LLM] GitHub Treatment Plan response received ({len(text)} bytes).")
+        elif PROVIDER == "ollama":
+            print(f"[LLM] Initiating Ollama ({ENV_KEYS['OLLAMA_MODEL']}) request for TREATMENT PLAN...")
+            response = CLIENT.chat(model=ENV_KEYS["OLLAMA_MODEL"], messages=[{"role": "user", "content": prompt}], format='json', options=OLLAMA_OPTIONS)
+            text = response['message']['content']
+            print(f"[LLM] Ollama Treatment Plan response received ({len(text)} bytes).")
+        else: # Gemini
+            print(f"[LLM] Initiating Gemini ({ENV_KEYS['GEMINI_MODEL']}) request for TREATMENT PLAN...")
+            response = CLIENT.models.generate_content(model=ENV_KEYS["GEMINI_MODEL"], contents=prompt, config=google_types.GenerateContentConfig(temperature=0.1))
+            text = response.text
+            print(f"[LLM] Gemini Treatment Plan response received ({len(text)} bytes).")
 
-        try:
-            text = ""
-            if provider_name == "github":
-                print("[LLM] Attempting GPT-4o synthesis for treatment plan...")
-                response = current_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}], temperature=0.1)
-                text = response.choices[0].message.content
-            elif provider_name == "gemini":
-                print("[LLM] Attempting Gemini 1.5 Flash synthesis for treatment plan...")
-                response = current_client.models.generate_content(model="gemini-1.5-flash", contents=prompt, config=google_types.GenerateContentConfig(temperature=0.1))
-                text = response.text
-            
-            json_match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
-            if json_match: 
-                # RETURN EXPERIENCES HERE
-                return json.loads(json_match.group(0)), evidence, experiences_raw
-            else:
-                raise ValueError(f"JSON parsing failed or empty response from {provider_name} LLM.")
-
-        except Exception as e:
-            error_message = str(e)
-            print(f"[LLM ERROR] Plan failed with {provider_name}: {error_message}")
-            if "429 Too Many Requests" in error_message or "rate limit" in error_message.lower() or "quota" in error_message.lower():
-                available_providers.pop(0)
-                continue
-            else:
-                return get_fallback_plan(rules, cancer), evidence, experiences_raw
-    
-    return get_fallback_plan(rules, cancer), evidence, experiences_raw
+        json_match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
+        if json_match: return json.loads(json_match.group(0)), evidence, experiences_raw
+        raise ValueError("JSON parsing failed")
+    except Exception as e:
+        print(f"[LLM ERROR] Plan failed: {e}")
+        return get_fallback_plan(rules, cancer), evidence, experiences_raw
 
 def get_fallback_plan(rules, cancer):
-    primary = rules.get("primary_treatments", ["Standard Protocol"])[0]
+    primary_list = rules.get("primary_treatments", [])
+    primary = primary_list[0] if primary_list else "Standard Protocol"
     return {
         "primary_treatment": primary,
         "clinical_rationale": rules.get("personalization_insight") or "Standard protocol.",
@@ -163,62 +185,32 @@ def predict_outcomes(patient, patient_data_dict, cancer, query, queries):
     evidence_text = "\n".join([f"[{i+1}] {e['text']}" for i, e in enumerate(evidence)])
 
     # ─── New: Case-Based Reasoning for Outcomes ───
-    historical_experience = ""
+    
+    if not CLIENT: return get_fallback_outcomes(patient_data_dict), evidence
+
     try:
-        past_cases = retrieve_similar_experience(patient_data_dict, top_k=2)
-        if past_cases:
-            historical_experience = "\nINTERNAL EXPERIENCE (Actual Past Outcomes):\n"
-            for i, case in enumerate(past_cases):
-                tx = case['treatment_plan'].get('primary_treatment', 'Standard Care')
-                historical_experience += f"Case {i+1}: Treatment '{tx}' was approved by clinician with score {case['feedback_score']}.\n"
+        if PROVIDER == "github":
+            print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for OUTCOMES...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}])
+            text = response.choices[0].message.content
+            print(f"[LLM] GitHub Outcomes response received ({len(text)} bytes).")
+        elif PROVIDER == "ollama":
+            print(f"[LLM] Initiating Ollama ({ENV_KEYS['OLLAMA_MODEL']}) request for OUTCOMES...")
+            response = CLIENT.chat(model=ENV_KEYS["OLLAMA_MODEL"], messages=[{"role": "user", "content": prompt}], format='json', options=OLLAMA_OPTIONS)
+            text = response['message']['content']
+            print(f"[LLM] Ollama Outcomes response received ({len(text)} bytes).")
+        else: # Gemini
+            print(f"[LLM] Initiating Gemini ({ENV_KEYS['GEMINI_MODEL']}) request for OUTCOMES...")
+            response = CLIENT.models.generate_content(model=ENV_KEYS["GEMINI_MODEL"], contents=prompt)
+            text = response.text
+            print(f"[LLM] Gemini Outcomes response received ({len(text)} bytes).")
+
+        json_match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
+        if json_match: return json.loads(json_match.group(0)), evidence
+        raise ValueError("No JSON")
     except Exception as e:
-        print(f"[MEMORY] Outcomes experience retrieval failed: {e}")
-
-    prompt = f"Return ONLY JSON for outcomes. Structure: {{ side_effects: {{ fatigue: 0 }}, overall_survival: {{ median: 0, range_min: 0, range_max: 0 }}, progression_free_survival: {{ median: 0 }}, risk_stratification: {{ low: 0, moderate: 0, high: 0 }}, prognostic_factors: {{ Age: 0 }}, timeline_projection: {{ months: [], response_indicator: [], quality_of_life: [] }}, quality_of_life: 0 }}. Patient: {patient}. Evidence: {evidence_text}. {historical_experience}"
-    
-    initialized_clients = _get_initialized_clients()
-    available_providers = ["github", "gemini"] # Initial order of preference
-
-    while available_providers:
-        provider_name = available_providers[0] # Get the top preference
-        current_client = initialized_clients.get(provider_name)
-
-        if not current_client:
-            available_providers.pop(0) # Remove this provider if not initialized
-            continue
-
-        try:
-            text = ""
-            if provider_name == "github":
-                print("[LLM] Attempting GPT-4o synthesis for outcomes...")
-                response = current_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
-                text = response.choices[0].message.content
-            elif provider_name == "gemini":
-                print("[LLM] Attempting Gemini 1.5 Flash synthesis for outcomes...")
-                response = current_client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
-                text = response.text
-            
-            json_match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
-            if json_match: 
-                return json.loads(json_match.group(0)), evidence
-            else:
-                raise ValueError(f"No JSON detected in {provider_name} LLM response.")
-
-        except Exception as e:
-            error_message = str(e)
-            print(f"[LLM ERROR] Outcomes prediction failed with {provider_name}: {error_message}")
-            if "429 Too Many Requests" in error_message or "rate limit" in error_message.lower() or "quota" in error_message.lower():
-                print(f"[LLM] {provider_name} rate limited. Trying next provider.")
-                available_providers.pop(0) # Remove this provider from the available list
-                continue # Try the next provider in the loop
-            else:
-                # Other non-rate-limit error, fall back to local outcomes immediately
-                print(f"[LLM] Non-rate-limit error with {provider_name}. Falling back to local outcomes.")
-                return get_fallback_outcomes(patient_data_dict), evidence
-    
-    # If all providers failed or were not available
-    print("[LLM ERROR] All configured LLM providers failed or were not available. Falling back to local outcomes.")
-    return get_fallback_outcomes(patient_data_dict), evidence
+        print(f"[LLM ERROR] Outcomes prediction failed: {e}")
+        return get_fallback_outcomes(patient_data_dict), evidence
 
 def get_fallback_outcomes(p):
     import random
@@ -255,40 +247,26 @@ def query_treatment_plan(patient, plan, query, cancer, history=None):
     """
     
     clinical_delta = {"change": False}
-    initialized_clients = _get_initialized_clients()
-    available_providers_delta = ["github", "gemini"] # Initial order of preference for delta extraction
-
-    while available_providers_delta:
-        provider_name = available_providers_delta[0] # Get the top preference
-        current_client = initialized_clients.get(provider_name)
-
-        if not current_client:
-            available_providers_delta.pop(0) # Remove this provider if not initialized
-            continue
-
-        try:
-            resp = None
-            if provider_name == "github":
-                print("[LLM] Attempting GPT-4o for clinical delta extraction...")
-                resp = current_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": extraction_prompt}], response_format={"type": "json_object"})
-                clinical_delta = json.loads(resp.choices[0].message.content)
-            elif provider_name == "gemini":
-                print("[LLM] Attempting Gemini 1.5 Flash for clinical delta extraction...")
-                resp = current_client.models.generate_content(model="gemini-1.5-flash", contents=extraction_prompt)
-                match = re.search(r'\{.*\}', resp.text, re.DOTALL)
-                if match: clinical_delta = json.loads(match.group(0))
-            break # Success, break out of loop
-        except Exception as e:
-            error_message = str(e)
-            print(f"[LLM ERROR] Clinical delta extraction failed with {provider_name}: {error_message}")
-            if "429 Too Many Requests" in error_message or "rate limit" in error_message.lower() or "quota" in error_message.lower():
-                print(f"[LLM] {provider_name} rate limited during delta extraction. Trying next provider.")
-                available_providers_delta.pop(0) # Remove this provider from the available list
-                continue # Try again with the next provider
-            else:
-                # Other non-rate-limit error, proceed with default clinical_delta
-                print(f"[LLM] Non-rate-limit error with {provider_name} during delta extraction. Proceeding with default.")
-                break
+    try:
+        if PROVIDER == "github":
+            print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for CLINICAL DELTA extraction...")
+            resp = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": extraction_prompt}], response_format={"type": "json_object"})
+            clinical_delta = json.loads(resp.choices[0].message.content)
+            print(f"[LLM] GitHub Clinical Delta received: {clinical_delta.get('change')}")
+        elif PROVIDER == "ollama":
+            print(f"[LLM] Initiating Ollama ({ENV_KEYS['OLLAMA_MODEL']}) request for CLINICAL DELTA extraction...")
+            resp = CLIENT.chat(model=ENV_KEYS["OLLAMA_MODEL"], messages=[{"role": "user", "content": extraction_prompt}], format='json', options=OLLAMA_OPTIONS)
+            clinical_delta = json.loads(resp['message']['content'])
+            print(f"[LLM] Ollama Clinical Delta received: {clinical_delta.get('change')}")
+        else: # Gemini
+            print(f"[LLM] Initiating Gemini ({ENV_KEYS['GEMINI_MODEL']}) request for CLINICAL DELTA extraction...")
+            resp = CLIENT.models.generate_content(model=ENV_KEYS["GEMINI_MODEL"], contents=extraction_prompt)
+            match = re.search(r'\{.*\}', resp.text, re.DOTALL)
+            if match: clinical_delta = json.loads(match.group(0))
+            print(f"[LLM] Gemini Clinical Delta received: {clinical_delta.get('change')}")
+    except Exception as e:
+        print(f"[LLM ERROR] Clinical delta extraction failed: {e}")
+        pass
 
 
     # 2. IF a change is detected, re-run the DETERMINISTIC RULE ENGINE
@@ -342,12 +320,19 @@ def query_treatment_plan(patient, plan, query, cancer, history=None):
         "medicalHistory": patient_dict.get("medicalHistory", "")[:500], # First 500 chars only
         "genomicProfile": patient_dict.get("genomicProfile", {})
     }
-
+    
     final_prompt = f"""
     You are a Senior Oncology Consultant. Answer the doctor's query.
     {simulation_context}
     
-    CRITICAL STRUCTURE GUIDELINES:
+    If the query is a "What-if" simulation (e.g., "What if we switch to X at month Y?"), provide a structured analysis:
+    ### WHAT-IF SIMULATION: [SCENARIO NAME]
+    1. CLINICAL RATIONALE: Why this shift might be considered.
+    2. PROJECTED OUTCOME DELTA: How survival (OS/PFS) or Response Indicator might shift.
+    3. TOXICITY SHIFT: New side effects to monitor.
+    4. PATHWAY ADJUSTMENT: How the remaining timeline phases would change.
+
+    Otherwise, follow these guidelines:
     1. HEADER: Identify the factor (### [FACTOR] IMPACT ANALYSIS).
     2. DELTA: Explain exactly how rule-engine results changed.
     3. ACTIONS: 3-4 clinical bullet points.
@@ -360,47 +345,29 @@ def query_treatment_plan(patient, plan, query, cancer, history=None):
     CORE CLINICAL PROFILE:
     {json.dumps(pruned_patient, indent=2)}
 
-    PLAN: {str(plan)}
+    CURRENT PLAN/SCENARIOS: {str(plan)}
     QUERY: {query}
     
     CONSULTANT RESPONSE:
     """
     
-    initialized_clients = _get_initialized_clients()
-    available_providers_final = ["github", "gemini"] # Initial order of preference for final answer generation
-
-    while available_providers_final:
-        provider_name = available_providers_final[0] # Get the top preference
-        current_client = initialized_clients.get(provider_name)
-
-        if not current_client:
-            available_providers_final.pop(0) # Remove this provider if not initialized
-            continue
-        
-        try:
-            response_text = ""
-            if provider_name == "github":
-                print("[LLM] Attempting GPT-4o for final answer generation...")
-                response = current_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": final_prompt}])
-                response_text = response.choices[0].message.content.strip()
-            elif provider_name == "gemini":
-                print("[LLM] Attempting Gemini 1.5 Flash for final answer generation...")
-                response = current_client.models.generate_content(model="gemini-1.5-flash", contents=final_prompt)
-                response_text = response.text.strip()
-            
-            return response_text, [] # Success, return response
-        except Exception as e:
-            error_message = str(e)
-            print(f"[LLM ERROR] Final answer generation failed with {provider_name}: {error_message}")
-            if "429 Too Many Requests" in error_message or "rate limit" in error_message.lower() or "quota" in error_message.lower():
-                print(f"[LLM] {provider_name} rate limited during final answer generation. Trying next provider.")
-                available_providers_final.pop(0) # Remove this provider from the available list
-                continue # Try again with the next provider
-            else:
-                # Other non-rate-limit error, return error message
-                print(f"[LLM] Non-rate-limit error with {provider_name} during final answer generation. Returning error message.")
-                return "The reasoning engine encountered an error while generating the final response.", []
-    
-    # If all providers failed or were not available for final answer generation
-    print("[LLM ERROR] All configured LLM providers failed or rate limited for final answer generation.")
-    return "The reasoning engine encountered an error while generating the final response.", []
+    try:
+        if PROVIDER == "github":
+            print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for CONSULTANT RESPONSE...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": final_prompt}])
+            result = response.choices[0].message.content.strip()
+            print(f"[LLM] GitHub Consultant Response received ({len(result)} bytes).")
+            return result, []
+        elif PROVIDER == "ollama":
+            print(f"[LLM] Initiating Ollama ({ENV_KEYS['OLLAMA_MODEL']}) request for CONSULTANT RESPONSE...")
+            response = CLIENT.chat(model=ENV_KEYS["OLLAMA_MODEL"], messages=[{"role": "user", "content": final_prompt}], options=OLLAMA_OPTIONS)
+            result = response['message']['content'].strip()
+            print(f"[LLM] Ollama Consultant Response received ({len(result)} bytes).")
+            return result, []
+        else: # Gemini
+            print(f"[LLM] Initiating Gemini ({ENV_KEYS['GEMINI_MODEL']}) request for CONSULTANT RESPONSE...")
+            response = CLIENT.models.generate_content(model=ENV_KEYS["GEMINI_MODEL"], contents=final_prompt)
+            return response.text.strip(), []
+    except Exception as e:
+        print(f"[LLM ERROR] Final answer generation failed: {e}")
+        return "The reasoning engine encountered an error.", []

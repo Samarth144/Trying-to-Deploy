@@ -2,8 +2,7 @@ const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const axios = require('axios');
-const { formatEvidenceWithGithub } = require('../utils/githubFormatter');
-const { generatePathwayWithGemini } = require('../utils/geminiFormatter'); // Keep for pathway generation
+const { formatEvidenceWithOllama, generatePathwayWithOllama } = require('../utils/ollamaFormatter');
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
@@ -21,7 +20,7 @@ exports.generatePathway = async (req, res) => {
             });
         }
 
-        const pathway = await generatePathwayWithGemini(plan);
+        const pathway = await generatePathwayWithOllama(plan);
 
         res.json({
             success: true,
@@ -35,7 +34,7 @@ exports.generatePathway = async (req, res) => {
     }
 };
 
-// @desc    Generate and format a treatment plan using AI and Gemini
+// @desc    Generate and format a treatment plan using AI and local Ollama
 // @route   POST /api/treatments/generate-formatted
 // @access  Private
 exports.generateFormattedPlan = async (req, res) => {
@@ -95,13 +94,13 @@ exports.generateFormattedPlan = async (req, res) => {
         const confidence = rawTreatmentData.confidence || 92.0;
         const protocols = rawTreatmentData.protocols || [];
 
-        // Step 2: Use pre-formatted evidence from AI engine if available, otherwise format with Gemini.
+        // Step 2: Use pre-formatted evidence from AI engine if available, otherwise format with local Ollama.
         console.log('Step 2: Checking for pre-formatted evidence...');
         let formattedEvidence = rawPlan.formatted_evidence;
         
         if (!formattedEvidence && evidence && evidence.length > 0) {
-            console.log('No pre-formatted evidence found. Calling GitHub formatter...');
-            formattedEvidence = await formatEvidenceWithGithub(evidence);
+            console.log('No pre-formatted evidence found. Calling Ollama formatter...');
+            formattedEvidence = await formatEvidenceWithOllama(evidence);
         } else if (!formattedEvidence) {
             formattedEvidence = "No specific evidence provided for formatting.";
         }
@@ -176,7 +175,7 @@ exports.generateFormattedPlan = async (req, res) => {
                 message: 'The AI engine is not responding. Please ensure it is running and accessible at http://127.0.0.1:5000.'
             });
         }
-        // Other errors (e.g., Gemini API failure, data processing error)
+        // Other errors (e.g., Ollama/AI Engine failure, data processing error)
         console.error('A non-request error occurred:', error.message);
         res.status(500).json({
             success: false,

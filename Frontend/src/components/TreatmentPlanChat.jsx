@@ -60,10 +60,11 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                 onClick={() => setIsOpen(true)}
                 sx={{
                     position: 'fixed',
-                    bottom: 32,
-                    right: 32,
+                    bottom: 40,
+                    right: 40,
                     background: 'linear-gradient(135deg, #5B6FF6 0%, #7C5CFF 100%)',
                     color: '#fff',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
                     '&:hover': { 
                         background: 'linear-gradient(135deg, #7C5CFF 0%, #5B6FF6 100%)',
                         transform: 'scale(1.1)',
@@ -72,7 +73,7 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                     boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
                     width: 64,
                     height: 64,
-                    zIndex: 9999,
+                    zIndex: 10000,
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
             >
@@ -86,8 +87,8 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
             elevation={24}
             sx={{
                 position: 'fixed',
-                bottom: 32,
-                right: 32,
+                bottom: 40,
+                right: 40,
                 width: 500, // Increased width
                 height: 550, // Reverted height
                 display: 'flex',
@@ -96,7 +97,7 @@ const TreatmentPlanChat = ({ treatmentId, patientData, planData }) => {
                 border: '1px solid rgba(91, 111, 246, 0.3)',
                 borderRadius: '20px',
                 overflow: 'hidden',
-                zIndex: 9999,
+                zIndex: 10000,
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}
         >
