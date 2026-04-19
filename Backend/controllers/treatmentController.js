@@ -2,6 +2,7 @@ const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const axios = require('axios');
+const { formatEvidenceWithGroq } = require('../utils/groqFormatter');
 
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');

@@ -102,7 +102,8 @@ function PathwaySimulator() {
           metrics: { os, pfs, qol, tox }
         };
 
-        const rawAlternatives = latestPlan.alternativeOptions || planMeta.alternatives || [];
+        const rawAlternativesRaw = latestPlan.alternativeOptions || planMeta.alternatives || [];
+        const rawAlternatives = Array.isArray(rawAlternativesRaw) ? rawAlternativesRaw : [rawAlternativesRaw].filter(a => a);
         const alternatives = (rawAlternatives).map((alt, idx) => {
           const name = typeof alt === 'string' ? alt : (alt.protocol || alt.treatment || 'Alternative Approach');
           let desc = 'Alternative clinical approach based on current guidelines.';

@@ -181,7 +181,7 @@ exports.processAnalysis = async (req, res) => {
         const runScript = (name, argsArray = []) => {
             return new Promise((resolve, reject) => {
                 const sPath = path.join(scriptDir, name);
-                const pythonExecutable = "C:\\Users\\PRANAV JADHAV\\anaconda3\\envs\\my_project_env\\python.exe";
+                const pythonExecutable = process.env.PYTHON_PATH || "python";
                 
                 // The first argument to spawn is the executable, the second is an array of args
                 const spawnArgs = [
@@ -362,7 +362,7 @@ exports.getSlice = async (req, res) => {
         }
 
         const scriptPath = path.join(baseDir, 'Inference_Pipeline/extract_slice.py');
-        const pythonExecutable = "C:\\Users\\PRANAV JADHAV\\anaconda3\\envs\\my_project_env\\python.exe"; // Define here
+        const pythonExecutable = process.env.PYTHON_PATH || "python"; // Use env var or default to python
 
         // Check if file exists before running python
         const fs = require('fs');

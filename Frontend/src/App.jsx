@@ -20,6 +20,7 @@ import PatientProfile from './pages/PatientProfile';
 import KnowledgeKernel from './pages/KnowledgeKernel';
 import ClinicalBaselineDemo from './pages/ClinicalBaselineDemo';
 import AdminDashboard from './pages/AdminDashboard';
+import AwarenessTab from './pages/AwarenessTab';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
 
@@ -100,6 +101,7 @@ function App() {
               <Route path="/histopathology" element={<ProtectedRoute><Histopathology /></ProtectedRoute>} />
               <Route path="/treatment-plan" element={<ProtectedRoute><TreatmentPlan /></ProtectedRoute>} />
               <Route path="/outcome-prediction" element={<ProtectedRoute><OutcomePrediction /></ProtectedRoute>} />
+              <Route path="/awareness" element={<ProtectedRoute><AwarenessTab /></ProtectedRoute>} />
               
               {/* Restricted Write Routes (Oncologist, Admin) */}
               <Route path="/patients" element={

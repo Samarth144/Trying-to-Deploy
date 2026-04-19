@@ -15,8 +15,9 @@ import { useAuth } from '../context/AuthContext';
 import PersonIcon from '@mui/icons-material/Person';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import DescriptionIcon from '@mui/icons-material/Description';
-import MedicationIcon from '@mui/icons-material/Medication';
+import MedicineIcon from '@mui/icons-material/Medication';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import SpaIcon from '@mui/icons-material/Spa';
 
 // ... (colors and StatItem, PatientRow remain the same)
 const colors = {
@@ -228,9 +229,10 @@ const Dashboard = () => {
   // --- RENDER PATIENT VIEW ---
   if (isPatient) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
-        <Container maxWidth="xl">
-          <Box sx={{ mb: 6 }}>
+      <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 4, px: { xs: 2, md: 4 } }}>
+        <Container maxWidth="xl" sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Header Section */}
+          <Box>
             <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
               PATIENT HUB
             </Typography>
@@ -239,146 +241,184 @@ const Dashboard = () => {
             </Typography>
           </Box>
 
+          {/* Stats Bar Section */}
           <Box sx={{
             bgcolor: 'rgba(22, 32, 50, 0.6)',
             border: `1px solid ${colors.border}`,
             borderRadius: '12px',
-            p: 4,
-            mb: 6,
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            gap: 4,
+            p: 3,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 2,
+            alignItems: 'center',
             backdropFilter: 'blur(10px)'
           }}>
             {loading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', px: 3, gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gridColumn: '1 / -1', gap: 2 }}>
                 <CircularProgress size={20} sx={{ color: colors.teal }} />
                 <Typography variant="caption" sx={{ color: colors.muted }}>Loading your health metrics...</Typography>
               </Box>
-            ) : dbStats.map((stat) => (
-              <StatItem key={stat.label} {...stat} />
+            ) : dbStats.map((stat, i) => (
+              <Box key={stat.label} sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: 2,
+                borderRight: i < dbStats.length - 1 ? `1px solid ${colors.border}` : 'none'
+              }}>
+                <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+                  {stat.value}
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <Typography variant="caption" sx={{ color: colors.cyan, fontFamily: '"JetBrains Mono"', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '1px' }}>
+                    {stat.unit}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                    {stat.label}
+                  </Typography>
+                </Box>
+              </Box>
             ))}
           </Box>
 
-          <Grid container spacing={4}>
-            {/* NEW: PERSONAL IDENTITY CARD */}
-            <Grid xs={12}>
-              <Card sx={{
-                bgcolor: 'rgba(5, 151, 137, 0.1)',
-                border: `1px solid ${colors.teal}`,
-                borderRadius: '12px',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <Avatar sx={{ width: 80, height: 80, bgcolor: colors.teal, fontSize: '2rem', fontFamily: 'Rajdhani', fontWeight: 700 }}>
-                        {user?.name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h4" sx={{ fontFamily: 'Rajdhani', fontWeight: 700, color: '#fff' }}>
-                          {user?.name}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                          <Chip label={`MRN: ${patientData?.mrn || '---'}`} size="small" sx={{ bgcolor: `${colors.cyan}20`, color: colors.cyan, borderRadius: '4px', fontFamily: 'JetBrains Mono' }} />
-                          <Chip label="ACTIVE CASE" size="small" sx={{ bgcolor: `${colors.green}20`, color: colors.green, borderRadius: '4px', fontWeight: 700 }} />
-                        </Box>
-                      </Box>
-                    </Box>
-
-                    <Grid container spacing={4} sx={{ width: { xs: '100%', md: 'auto' }, minWidth: { md: '400px' } }}>
-                      <Grid xs={6} md={4}>
-                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>DATE OF BIRTH</Typography>
-                        <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.dob ? new Date(patientData.dob).toLocaleDateString() : '---'}</Typography>
-                      </Grid>
-                      <Grid xs={6} md={4}>
-                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>GENDER</Typography>
-                        <Typography sx={{ color: '#fff', fontWeight: 600, textTransform: 'uppercase' }}>{patientData?.gender || '---'}</Typography>
-                      </Grid>
-                      <Grid xs={12} md={4}>
-                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>CONTACT</Typography>
-                        <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.phone || user?.email}</Typography>
-                      </Grid>
-                    </Grid>
+          {/* Patient Card Section */}
+          <Card sx={{
+            bgcolor: 'rgba(5, 151, 137, 0.1)',
+            border: `1px solid ${colors.teal}`,
+            borderRadius: '12px',
+            position: 'relative',
+            overflow: 'hidden',
+            width: '100%'
+          }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 4 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 'min-content' }}>
+                  <Typography variant="h4" sx={{ fontFamily: 'Rajdhani', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                    {user?.name}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Chip label={`MRN: ${patientData?.mrn || '---'}`} size="small" sx={{ bgcolor: `${colors.cyan}20`, color: colors.cyan, borderRadius: '4px', fontFamily: 'JetBrains Mono' }} />
+                    <Chip label="ACTIVE CASE" size="small" sx={{ bgcolor: `${colors.green}20`, color: colors.green, borderRadius: '4px', fontWeight: 700 }} />
                   </Box>
-                </CardContent>
-                <Box sx={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.05 }}>
-                  <PersonIcon sx={{ fontSize: 150 }} />
                 </Box>
-              </Card>
-            </Grid>
 
-            <Grid xs={12} md={4}>
-              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                    <AnalyticsIcon sx={{ color: colors.amber }} />
-                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>AI ANALYSIS</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, flexGrow: 1 }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>DATE OF BIRTH</Typography>
+                    <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.dob ? new Date(patientData.dob).toLocaleDateString() : '---'}</Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
-                    Review your latest MRI segmentations and histopathology reports generated by the AI engine.
-                  </Typography>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    disabled={!patientData}
-                    onClick={() => navigate(`/tumor-3d?patientId=${patientData.id}`)}
-                    sx={{ color: colors.amber, borderColor: colors.amber, fontFamily: 'Rajdhani', fontWeight: 700 }}
-                  >
-                    EXPLORE 3D MODELS
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>GENDER</Typography>
+                    <Typography sx={{ color: '#fff', fontWeight: 600, textTransform: 'uppercase' }}>{patientData?.gender || '---'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>CONTACT</Typography>
+                    <Typography sx={{ color: '#fff', fontWeight: 600 }}>{patientData?.phone || user?.email}</Typography>
+                  </Box>
+                </Box>
 
-            <Grid xs={12} md={4}>
-              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                    <DescriptionIcon sx={{ color: colors.green }} />
-                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>TREATMENT PLAN</Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
-                    Your personalized treatment protocols and evidence-based clinical recommendations.
-                  </Typography>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    disabled={!patientData}
-                    onClick={() => navigate(`/treatment-plan?patientId=${patientData.id}`)}
-                    sx={{ color: colors.green, borderColor: colors.green, fontFamily: 'Rajdhani', fontWeight: 700 }}
-                  >
-                    VIEW PROTOCOLS
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
+                <Avatar sx={{ width: 80, height: 80, bgcolor: colors.teal, fontSize: '2rem', fontFamily: 'Rajdhani', fontWeight: 700, marginLeft: { xs: 0, md: 'auto' }, marginTop: { xs: 2, md: 0 } }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </Box>
+            </CardContent>
+            <Box sx={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.05, pointerEvents: 'none' }}>
+              <PersonIcon sx={{ fontSize: 150 }} />
+            </Box>
+          </Card>
 
-            <Grid xs={12} md={4}>
-              <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, height: '100%' }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                    <MedicationIcon sx={{ color: colors.teal }} />
-                    <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>OUTCOMES</Typography>
-                  </Box>
-                  <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk' }}>
-                    Predicted survival rates, side-effect profiles, and quality-of-life projections.
-                  </Typography>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    disabled={!patientData}
-                    onClick={() => navigate(`/outcome-prediction?patientId=${patientData.id}`)}
-                    sx={{ color: colors.teal, borderColor: colors.teal, fontFamily: 'Rajdhani', fontWeight: 700 }}
-                  >
-                    VIEW PREDICTIONS
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          {/* Feature Cards Grid Section */}
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, 
+            gap: 4,
+            alignItems: 'stretch'
+          }}>
+            <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <AnalyticsIcon sx={{ color: colors.amber }} />
+                  <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>AI ANALYSIS</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk', flexGrow: 1 }}>
+                  Review your latest MRI segmentations and histopathology reports generated by the AI engine.
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={!patientData}
+                  onClick={() => navigate(`/tumor-3d?patientId=${patientData.id}`)}
+                  sx={{ color: colors.amber, borderColor: colors.amber, fontFamily: 'Rajdhani', fontWeight: 700, mt: 'auto' }}
+                >
+                  EXPLORE 3D MODELS
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <DescriptionIcon sx={{ color: colors.green }} />
+                  <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>TREATMENT PLAN</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk', flexGrow: 1 }}>
+                  Your personalized treatment protocols and evidence-based clinical recommendations.
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={!patientData}
+                  onClick={() => navigate(`/treatment-plan?patientId=${patientData.id}`)}
+                  sx={{ color: colors.green, borderColor: colors.green, fontFamily: 'Rajdhani', fontWeight: 700, mt: 'auto' }}
+                >
+                  VIEW PROTOCOLS
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <MedicineIcon sx={{ color: colors.teal }} />
+                  <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>OUTCOMES</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk', flexGrow: 1 }}>
+                  Predicted survival rates, side-effect profiles, and quality-of-life projections.
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={!patientData}
+                  onClick={() => navigate(`/outcome-prediction?patientId=${patientData.id}`)}
+                  sx={{ color: colors.teal, borderColor: colors.teal, fontFamily: 'Rajdhani', fontWeight: 700, mt: 'auto' }}
+                >
+                  VIEW PREDICTIONS
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ bgcolor: colors.glass, border: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <SpaIcon sx={{ color: colors.purple }} />
+                  <Typography variant="h5" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>AWARENESS</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ color: colors.muted, mb: 4, fontFamily: 'Space Grotesk', flexGrow: 1 }}>
+                  Personalized lifestyle, diet, and daily symptom monitoring guidance powered by AI.
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={!patientData}
+                  onClick={() => navigate(`/awareness?patientId=${patientData.id}`)}
+                  sx={{ color: colors.purple, borderColor: colors.purple, fontFamily: 'Rajdhani', fontWeight: 700, mt: 'auto' }}
+                >
+                  VIEW GUIDANCE
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
         </Container>
       </Box>
     );

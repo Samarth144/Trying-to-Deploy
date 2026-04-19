@@ -537,29 +537,33 @@ function TreatmentPlan() {
   }, [cancerType]);
 
   const renderProtocol = (protocol) => {
+    if (!protocol) return 'Standard Clinical Protocol';
+    
     if (typeof protocol === 'string') {
         try {
             const parsed = JSON.parse(protocol);
-            // If parsing succeeds and it's an object, render it as an object
             if (typeof parsed === 'object' && parsed !== null) {
                 return renderProtocol(parsed);
             }
-            // Otherwise, it's just a string
             return protocol;
         } catch (e) {
-            // If parsing fails, it's just a regular string
             return protocol;
         }
     }
 
     if (typeof protocol === 'object' && protocol !== null) {
+        // Support common LLM nesting patterns
+        if (protocol.name) return protocol.name;
+        if (protocol.treatment) return protocol.treatment;
+        if (protocol.primary_treatment) return protocol.primary_treatment;
+
         return Object.entries(protocol)
-            .filter(([key, value]) => value) // Filter for true values
-            .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1))
+            .filter(([key, value]) => value && typeof value !== 'object') 
+            .map(([key]) => key.replace(/_/g, ' ').toUpperCase())
             .join(' + ');
     }
 
-    return 'No protocol specified';
+    return 'Standard Clinical Protocol';
   };
 
   const protocols = useMemo(() => {
@@ -567,7 +571,7 @@ function TreatmentPlan() {
     
     // Use protocols from backend if they exist and have at least 1 item
     let list = [];
-    if (treatmentData.protocols && treatmentData.protocols.length > 0) {
+    if (Array.isArray(treatmentData.protocols) && treatmentData.protocols.length > 0) {
         list = [...treatmentData.protocols];
     } else {
         list = [{
@@ -584,7 +588,7 @@ function TreatmentPlan() {
     // Ensure we always have at least 3 for the UI layout
     if (list.length < 2) {
         list.push({
-            name: 'Targeted Clinical Trial',
+            name: `Targeted ${cancerType} Clinical Trial`,
             score: Math.round((list[0].score || 90) - 13.5),
             duration: 'Variable',
             efficacy: 'Investigational',
@@ -596,7 +600,7 @@ function TreatmentPlan() {
 
     if (list.length < 3) {
         list.push({
-            name: 'Advanced Research Protocol',
+            name: `Advanced ${cancerType} Research Protocol`,
             score: Math.round((list[1].score || 80) - 6.5),
             duration: '12-24 months',
             efficacy: 'High (Projected)',
@@ -612,23 +616,83 @@ function TreatmentPlan() {
   const formatMarkdown = (text) => {
     if (!text) return null;
 
+    // 1. Handle Objects and Arrays
+    if (typeof text === 'object' && text !== null) {
+        // --- SMART DETECTOR FOR CLINICAL EVIDENCE OBJECTS ---
+        if (text.treatment || text.level || text.details) {
+            return (
+                <div className="clinical-evidence-card" style={{ 
+                    background: 'rgba(255,255,255,0.03)', 
+                    padding: '1.5rem', 
+                    borderRadius: '12px', 
+                    border: '1px solid rgba(0, 240, 255, 0.1)',
+                    marginBottom: '1.5rem'
+                }}>
+                    {text.treatment && (
+                        <h4 style={{ color: '#fff', marginBottom: '0.5rem', fontFamily: '"Rajdhani"', fontSize: '1.2rem' }}>
+                            {text.treatment}
+                        </h4>
+                    )}
+                    {text.level && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                            <span style={{ 
+                                background: 'rgba(34, 197, 94, 0.1)', 
+                                color: '#22C55E', 
+                                padding: '2px 8px', 
+                                borderRadius: '4px', 
+                                fontSize: '0.7rem', 
+                                fontWeight: 800,
+                                border: '1px solid rgba(34, 197, 94, 0.3)'
+                            }}>
+                                {text.level.toUpperCase()}
+                            </span>
+                            <span style={{ color: '#64748B', fontSize: '0.75rem' }}>STRENGTH OF RECOMMENDATION</span>
+                        </div>
+                    )}
+                    {text.details && (
+                        <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1rem' }}>
+                            {text.details}
+                        </p>
+                    )}
+                    {text.sources && Array.isArray(text.sources) && (
+                        <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                            <label style={{ fontSize: '0.65rem', color: '#64748B', letterSpacing: '1px', display: 'block', marginBottom: '0.5rem' }}>EVIDENCE SOURCES</label>
+                            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#94A3B8', fontSize: '0.8rem' }}>
+                                {text.sources.map((s, i) => <li key={i} style={{ marginBottom: '4px' }}>{s}</li>)}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const entries = Object.entries(text);
+        return entries.map(([key, value]) => {
+            const isNumericKey = !isNaN(Number(key));
+            return (
+                <div key={key} style={{ marginBottom: '1rem' }}>
+                    {!isNumericKey && (
+                        <h5 style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem', fontFamily: '"Rajdhani"' }}>
+                            {key.replace(/_/g, ' ').toUpperCase()}
+                        </h5>
+                    )}
+                    <div style={{ color: '#cbd5e1', borderLeft: isNumericKey ? '1px solid rgba(255,255,255,0.1)' : 'none', paddingLeft: isNumericKey ? '1rem' : '0' }}>
+                        {typeof value === 'object' ? formatMarkdown(value) : <ReactMarkdown>{String(value)}</ReactMarkdown>}
+                    </div>
+                </div>
+            );
+        });
+    }
+
+    // 2. Handle stringified JSON
     try {
         const parsed = JSON.parse(text);
         if (typeof parsed === 'object' && parsed !== null) {
-            return Object.entries(parsed).map(([key, value]) => (
-                <div key={key}>
-                    <h5 style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem', fontFamily: '"Rajdhani"' }}>{key.replace(/_/g, ' ').toUpperCase()}</h5>
-                    <div style={{ color: '#cbd5e1', marginBottom: '1rem' }}>
-                        <ReactMarkdown>{String(value)}</ReactMarkdown>
-                    </div>
-                </div>
-            ));
+            return formatMarkdown(parsed);
         }
-    } catch (e) {
-        // Not a JSON string, so process as markdown
-    }
+    } catch (e) { }
     
-    return <ReactMarkdown>{text}</ReactMarkdown>;
+    return <ReactMarkdown>{String(text)}</ReactMarkdown>;
   };
 
   const parseBold = (text) => {
@@ -642,27 +706,8 @@ function TreatmentPlan() {
   };
 
   const renderListItem = (item) => {
-    if (typeof item === 'string') {
-        return <ReactMarkdown>{item}</ReactMarkdown>; // Use ReactMarkdown for strings
-    }
-
-    if (typeof item === 'object' && item !== null) {
-        // Handle alternative options
-        if (item.option && item.clinical_rationale) {
-            return (
-                <>
-                    <strong>{item.option}</strong>
-                    <ReactMarkdown>{item.clinical_rationale}</ReactMarkdown>
-                </>
-            );
-        }
-        // If it's an object but doesn't fit the alternative option structure,
-        // it might be the clinical_rationale itself if it's a structured object.
-        // For now, fall back to JSON.stringify if not handled.
-        return <ReactMarkdown>{JSON.stringify(item, null, 2)}</ReactMarkdown>;
-    }
-
-    return 'Invalid item'; // Fallback for truly invalid items
+    if (!item) return 'Not provided';
+    return formatMarkdown(item);
   };
 
   return (
@@ -759,37 +804,45 @@ function TreatmentPlan() {
                 <div className="plan-details-grid">
                     <div className="plan-detail-section">
                         <label className="param-label">CLINICAL RATIONALE</label>
-                        <p className="protocol-desc">{renderListItem(treatmentData.planData.clinical_rationale)}</p>
+                        <div className="protocol-desc">{renderListItem(treatmentData.planData.clinical_rationale)}</div>
                     </div>
                     
                     <div className="plan-detail-section">
                         <label className="param-label">FOLLOW-UP STRATEGY</label>
-                        <p className="protocol-desc">{renderListItem(treatmentData.planData.follow_up)}</p>
+                        <div className="protocol-desc">{renderListItem(treatmentData.planData.follow_up)}</div>
                     </div>
 
                     <div className="plan-detail-section">
                         <label className="param-label">ALTERNATIVE OPTIONS</label>
                         <ul className="plan-list">
-                            {Array.isArray(treatmentData.planData.alternatives) ? (
-                                treatmentData.planData.alternatives.map((alt, i) => (
-                                    <li key={i}>{renderListItem(alt)}</li>
-                                ))
-                            ) : (
-                                <li>{renderListItem(treatmentData.planData.alternatives) || 'None provided'}</li>
-                            )}
+                            {(() => {
+                                const alts = treatmentData.planData.alternatives;
+                                const altArray = Array.isArray(alts) ? alts : (alts ? [alts] : []);
+                                return altArray.length > 0 ? (
+                                    altArray.map((alt, i) => (
+                                        <li key={i}>{renderListItem(alt)}</li>
+                                    ))
+                                ) : (
+                                    <li>Standard Clinical Trials</li>
+                                );
+                            })()}
                         </ul>
                     </div>
 
                     <div className="plan-detail-section">
                         <label className="param-label" style={{ color: '#EF4444' }}>SAFETY ALERTS & CONTRAINDICATIONS</label>
                         <ul className="plan-list">
-                            {Array.isArray(treatmentData.planData.safety_alerts) ? (
-                                treatmentData.planData.safety_alerts.map((alert, i) => (
-                                    <li key={i} style={{ color: '#FCA5A5' }}>{renderListItem(alert)}</li>
-                                ))
-                            ) : (
-                                <li style={{ color: '#FCA5A5' }}>{renderListItem(treatmentData.planData.safety_alerts) || 'No immediate safety alerts.'}</li>
-                            )}
+                            {(() => {
+                                const alerts = treatmentData.planData.safety_alerts;
+                                const alertArray = Array.isArray(alerts) ? alerts : (alerts ? [alerts] : []);
+                                return alertArray.length > 0 ? (
+                                    alertArray.map((alert, i) => (
+                                        <li key={i} style={{ color: '#FCA5A5' }}>{renderListItem(alert)}</li>
+                                    ))
+                                ) : (
+                                    <li style={{ color: '#FCA5A5' }}>No immediate safety alerts.</li>
+                                );
+                            })()}
                         </ul>
                     </div>
                 </div>

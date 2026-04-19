@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { formatSideEffectsWithGemini } = require('../utils/geminiFormatter');
+const { formatSideEffectsWithGroq } = require('../utils/groqFormatter');
 const OutcomePrediction = require('../models/OutcomePrediction');
 const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
@@ -44,8 +45,19 @@ exports.generateFormattedOutcomes = async (req, res) => {
         // Extract side effects and patient data for formatting
         const { sideEffects, ...restOfOutcomeData } = rawOutcomeData;
 
-        // Step 2: Format the side effects using the Gemini API formatter.
-        const formattedSideEffects = await formatSideEffectsWithGemini(sideEffects, req.body);
+        // Step 2: Format the side effects using the Groq API formatter.
+        let formattedSideEffects;
+        try {
+            formattedSideEffects = await formatSideEffectsWithGroq(sideEffects, req.body);
+        } catch (groqErr) {
+            console.error("Groq formatting failed, falling back to Gemini:", groqErr.message);
+            try {
+                formattedSideEffects = await formatSideEffectsWithGemini(sideEffects, req.body);
+            } catch (geminiErr) {
+                console.error("Gemini formatting failed too:", geminiErr.message);
+                formattedSideEffects = "Unable to format side effects at this time.";
+            }
+        }
 
         const finalResult = {
             ...restOfOutcomeData,

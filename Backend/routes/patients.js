@@ -6,7 +6,8 @@ const {
     createPatient,
     updatePatient,
     deletePatient,
-    analyzePathology
+    analyzePathology,
+    getAwarenessGuidance
 } = require('../controllers/patientController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -20,5 +21,6 @@ router.route('/:id')
     .delete(protect, authorize('oncologist', 'admin'), deletePatient);
 
 router.post('/:id/analyze-pathology', protect, analyzePathology);
+router.get('/:id/awareness', protect, getAwarenessGuidance);
 
 module.exports = router;

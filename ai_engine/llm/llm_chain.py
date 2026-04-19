@@ -16,6 +16,7 @@ from utils.clinical_memory import retrieve_similar_experience
 DEFAULT_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:14b")
 DEFAULT_GITHUB_MODEL = os.getenv("GITHUB_MODEL", "gpt-4o")
 DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # --- ROBUST ENV LOADING ---
 def load_clinical_env():
@@ -35,12 +36,31 @@ def load_clinical_env():
     return {
         "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY"),
+        "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
         "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
         "GITHUB_MODEL": os.getenv("GITHUB_MODEL", DEFAULT_GITHUB_MODEL),
-        "GEMINI_MODEL": os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+        "GEMINI_MODEL": os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+        "GROQ_MODEL": os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
     }
 
 ENV_KEYS = load_clinical_env()
+
+def _init_groq_client():
+    if not ENV_KEYS["GROQ_API_KEY"]:
+        return None
+    try:
+        # Use OpenAI client with Groq base URL
+        client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=ENV_KEYS["GROQ_API_KEY"]
+        )
+        # Quick check
+        client.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": "ping"}], max_tokens=1)
+        print(f"[LLM] SUCCESS: Groq ({ENV_KEYS['GROQ_MODEL']}) Active.")
+        return client
+    except Exception as e:
+        print(f"[LLM] Groq check failed: {e}")
+        return None
 
 def _init_github_client():
     if not ENV_KEYS["GITHUB_TOKEN"]:
@@ -76,20 +96,25 @@ def _init_gemini_client():
         return None
 
 def get_llm_provider_and_client():
-    # 1. Try GitHub Models (Primary)
+    # 1. Try Groq (Fastest)
+    groq_client = _init_groq_client()
+    if groq_client:
+        return "groq", groq_client
+
+    # 2. Try Gemini (Fastest Cloud Fallback/Primary)
+    gemini_client = _init_gemini_client()
+    if gemini_client:
+        return "gemini", gemini_client
+
+    # 3. Try GitHub Models
     github_client = _init_github_client()
     if github_client:
         return "github", github_client
 
-    # 2. Fallback to Ollama (Local)
+    # 4. Fallback to Ollama (Local - Last Resort)
     ollama_client = _init_ollama_client()
     if ollama_client:
         return "ollama", ollama_client
-
-    # 3. Fallback to Gemini
-    gemini_client = _init_gemini_client()
-    if gemini_client:
-        return "gemini", gemini_client
 
     return None, None
 
@@ -144,7 +169,12 @@ def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, quer
     if not CLIENT: return get_fallback_plan(rules, cancer), evidence, experiences_raw
 
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for TREATMENT PLAN...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1, response_format={"type": "json_object"})
+            text = response.choices[0].message.content
+            print(f"[LLM] Groq Treatment Plan response received ({len(text)} bytes).")
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for TREATMENT PLAN...")
             response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1)
             text = response.choices[0].message.content
@@ -188,8 +218,15 @@ def predict_outcomes(patient, patient_data_dict, cancer, query, queries):
     
     if not CLIENT: return get_fallback_outcomes(patient_data_dict), evidence
 
+    prompt = f"Predict outcomes for {patient}. Evidence: {evidence_text}. Return JSON."
+
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for OUTCOMES...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
+            text = response.choices[0].message.content
+            print(f"[LLM] Groq Outcomes response received ({len(text)} bytes).")
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for OUTCOMES...")
             response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}])
             text = response.choices[0].message.content
@@ -251,7 +288,12 @@ def format_evidence_llm(evidence_list):
     """
 
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for EVIDENCE FORMATTING...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1)
+            text = response.choices[0].message.content
+            print(f"[LLM] Groq Evidence Formatting response received ({len(text)} bytes).")
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for EVIDENCE FORMATTING...")
             response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1)
             text = response.choices[0].message.content
@@ -292,7 +334,12 @@ def format_pathway_llm(plan):
     """
 
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for PATHWAY GENERATION...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1, response_format={"type": "json_object"})
+            text = response.choices[0].message.content
+            print(f"[LLM] Groq Pathway Generation response received ({len(text)} bytes).")
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for PATHWAY GENERATION...")
             response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": prompt}], temperature=0.1)
             text = response.choices[0].message.content
@@ -340,7 +387,12 @@ def query_treatment_plan(patient, plan, query, cancer, history=None):
     
     clinical_delta = {"change": False}
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for CLINICAL DELTA extraction...")
+            resp = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": extraction_prompt}], response_format={"type": "json_object"})
+            clinical_delta = json.loads(resp.choices[0].message.content)
+            print(f"[LLM] Groq Clinical Delta received: {clinical_delta.get('change')}")
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for CLINICAL DELTA extraction...")
             resp = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": extraction_prompt}], response_format={"type": "json_object"})
             clinical_delta = json.loads(resp.choices[0].message.content)
@@ -444,7 +496,13 @@ def query_treatment_plan(patient, plan, query, cancer, history=None):
     """
     
     try:
-        if PROVIDER == "github":
+        if PROVIDER == "groq":
+            print(f"[LLM] Initiating Groq ({ENV_KEYS['GROQ_MODEL']}) request for CONSULTANT RESPONSE...")
+            response = CLIENT.chat.completions.create(model=ENV_KEYS["GROQ_MODEL"], messages=[{"role": "user", "content": final_prompt}])
+            result = response.choices[0].message.content.strip()
+            print(f"[LLM] Groq Consultant Response received ({len(result)} bytes).")
+            return result, []
+        elif PROVIDER == "github":
             print(f"[LLM] Initiating GitHub ({ENV_KEYS['GITHUB_MODEL']}) request for CONSULTANT RESPONSE...")
             response = CLIENT.chat.completions.create(model=ENV_KEYS["GITHUB_MODEL"], messages=[{"role": "user", "content": final_prompt}])
             result = response.choices[0].message.content.strip()

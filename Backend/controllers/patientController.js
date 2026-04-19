@@ -340,6 +340,45 @@ exports.updatePatient = async (req, res) => {
     }
 };
 
+const { generateAwarenessWithGroq } = require('../utils/groqFormatter');
+
+// @desc    Get AI-generated awareness guidance for a patient
+// @route   GET /api/patients/:id/awareness
+// @access  Private
+exports.getAwarenessGuidance = async (req, res) => {
+    try {
+        const patient = await Patient.findByPk(req.params.id);
+
+        if (!patient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+
+        // Role-based access check
+        if (req.user.role === 'patient' && patient.userId !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to view awareness guidance for this patient'
+            });
+        }
+
+        const guidance = await generateAwarenessWithGroq(patient);
+
+        res.json({
+            success: true,
+            data: guidance
+        });
+    } catch (error) {
+        console.error("Awareness Generation Error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to generate awareness guidance'
+        });
+    }
+};
+
 // @desc    Delete patient
 // @route   DELETE /api/patients/:id
 // @access  Private

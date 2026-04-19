@@ -362,8 +362,16 @@ def process_report_file():
     dynamic_confidence = min(99.9, max(75.0, 95.0 - (avg_rag_score * 10)))
 
     # Construct Structured Protocols List
-    primary_name = plan_data.get("primary_treatment", "Standard Protocol")
-    if len(primary_name) < 5: primary_name = "Standard Protocol"
+    # ROBUST EXTRACTION
+    primary_name = "Standard Protocol"
+    if isinstance(plan_data, dict):
+        p_tx = plan_data.get("primary_treatment")
+        if isinstance(p_tx, dict):
+            primary_name = p_tx.get("name") or p_tx.get("treatment") or p_tx.get("primary_treatment") or "Standard Protocol"
+        elif isinstance(p_tx, str) and len(p_tx) > 3:
+            primary_name = p_tx
+    
+    if len(str(primary_name)) < 5: primary_name = f"Standard {cancer_type} Protocol"
 
     protocols = [{
         "name": primary_name,
@@ -390,22 +398,22 @@ def process_report_file():
     # Ensure at least 3 protocols for UI consistency
     if len(protocols) < 2:
         protocols.append({
-            "name": "Targeted Clinical Trial",
+            "name": f"Targeted {cancer_type} Clinical Trial",
             "score": round(dynamic_confidence - 12.5, 1),
             "duration": "Variable",
             "efficacy": "Investigational",
             "toxicity": "Variable",
-            "cost": "Low (Trial-covered)",
+            "cost": "Trial-covered",
             "recommended": False
         })
     
     if len(protocols) < 3:
         protocols.append({
-            "name": "Advanced Research Protocol",
+            "name": f"Advanced {cancer_type} Research Protocol",
             "score": round(protocols[-1]["score"] - 5.5, 1),
             "duration": "12-24 months",
             "efficacy": "High (Projected)",
-            "toxicity": "Moderate-High",
+            "toxicity": "Moderate",
             "cost": "Institutional",
             "recommended": False
         })
@@ -478,8 +486,16 @@ def process_report_text():
     dynamic_confidence = min(99.9, max(75.0, 95.0 - (avg_rag_score * 10)))
 
     # Construct Structured Protocols List
-    primary_name = plan_data.get("primary_treatment", "Standard Protocol")
-    if len(primary_name) < 5: primary_name = "Standard Protocol"
+    # ROBUST EXTRACTION
+    primary_name = "Standard Protocol"
+    if isinstance(plan_data, dict):
+        p_tx = plan_data.get("primary_treatment")
+        if isinstance(p_tx, dict):
+            primary_name = p_tx.get("name") or p_tx.get("treatment") or p_tx.get("primary_treatment") or "Standard Protocol"
+        elif isinstance(p_tx, str) and len(p_tx) > 3:
+            primary_name = p_tx
+    
+    if len(str(primary_name)) < 5: primary_name = f"Standard {cancer_type} Protocol"
 
     protocols = [{
         "name": primary_name,
@@ -493,7 +509,7 @@ def process_report_text():
 
     for i, alt in enumerate(rules.get("alternative_options", [])):
         protocols.append({
-            "name": alt,
+            "name": alt['treatment'] if isinstance(alt, dict) else alt,
             "score": round(dynamic_confidence - (i+1)*random.uniform(5, 10), 1),
             "duration": "6-12 months",
             "efficacy": "Moderate",
@@ -503,10 +519,10 @@ def process_report_text():
         })
 
     if len(protocols) < 2:
-        protocols.append({ "name": "Targeted Clinical Trial", "score": round(dynamic_confidence - 12.5, 1), "duration": "Variable", "efficacy": "Investigational", "toxicity": "Variable", "cost": "Trial-covered", "recommended": False })
+        protocols.append({ "name": f"Targeted {cancer_type} Clinical Trial", "score": round(dynamic_confidence - 12.5, 1), "duration": "Variable", "efficacy": "Investigational", "toxicity": "Variable", "cost": "Trial-covered", "recommended": False })
     
     if len(protocols) < 3:
-        protocols.append({ "name": "Advanced Research Protocol", "score": round(dynamic_confidence - 18.0, 1), "duration": "12-24 months", "efficacy": "High (Projected)", "toxicity": "Moderate", "cost": "Institutional", "recommended": False })
+        protocols.append({ "name": f"Advanced {cancer_type} Research Protocol", "score": round(dynamic_confidence - 18.0, 1), "duration": "12-24 months", "efficacy": "High (Projected)", "toxicity": "Moderate", "cost": "Institutional", "recommended": False })
 
     return jsonify({
         'plan': plan_data,
@@ -601,12 +617,17 @@ def recommend_treatment():
 
         # Construct Structured Protocols List
         if not isinstance(plan_data, dict):
-             print(f"Error: plan_data is not a dict: {type(plan_data)}")
              plan_data = {"primary_treatment": str(plan_data)}
 
-        primary_name = plan_data.get("primary_treatment", "Standard Protocol")
-        if not isinstance(primary_name, str) or len(str(primary_name)) < 5: 
-            primary_name = "Standard Protocol"
+        # ROBUST EXTRACTION
+        primary_name = "Standard Protocol"
+        p_tx = plan_data.get("primary_treatment")
+        if isinstance(p_tx, dict):
+            primary_name = p_tx.get("name") or p_tx.get("treatment") or p_tx.get("primary_treatment") or "Standard Protocol"
+        elif isinstance(p_tx, str) and len(p_tx) > 3:
+            primary_name = p_tx
+        
+        if len(str(primary_name)) < 5: primary_name = f"Standard {cancer_type} Protocol"
 
         protocols = [{
             "name": primary_name,
@@ -636,10 +657,10 @@ def recommend_treatment():
             })
 
         if len(protocols) < 2:
-            protocols.append({ "name": "Targeted Clinical Trial", "score": round(dynamic_confidence - 12.5, 1), "duration": "Variable", "efficacy": "Investigational", "toxicity": "Variable", "cost": "Trial-covered", "recommended": False })
+            protocols.append({ "name": f"Targeted {cancer_type} Clinical Trial", "score": round(dynamic_confidence - 12.5, 1), "duration": "Variable", "efficacy": "Investigational", "toxicity": "Variable", "cost": "Trial-covered", "recommended": False })
         
         if len(protocols) < 3:
-            protocols.append({ "name": "Advanced Research Protocol", "score": round(dynamic_confidence - 18.0, 1), "duration": "12-24 months", "efficacy": "High (Projected)", "toxicity": "Moderate", "cost": "Institutional", "recommended": False })
+            protocols.append({ "name": f"Advanced {cancer_type} Research Protocol", "score": round(dynamic_confidence - 18.0, 1), "duration": "12-24 months", "efficacy": "High (Projected)", "toxicity": "Moderate", "cost": "Institutional", "recommended": False })
 
         return jsonify({
             'plan': plan_data,
