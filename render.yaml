@@ -1,0 +1,53 @@
+services:
+  # ─── PostgreSQL Managed Database ────────────────────────────────────────────
+  - type: database
+    name: resonance-db
+    databaseName: neuro_onco_ai
+    user: postgres
+    plan: free # Change to 'starter' for production
+
+  # ─── AI Engine (Private Python Service) ─────────────────────────────────────
+  - type: pservice
+    name: resonance-ai
+    env: docker
+    region: ohio
+    plan: starter # Python AI needs at least 'starter' RAM
+    dockerContext: ./ai_engine
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: GROQ_API_KEY
+        sync: false # Must be set in Render Dashboard
+      - key: GEMINI_API_KEY
+        sync: false # Optional
+
+  # ─── Backend & Frontend (Public Web Service) ────────────────────────────────
+  - type: web
+    name: resonance-backend
+    env: docker
+    region: ohio
+    plan: starter
+    dockerContext: .
+    dockerfilePath: Backend/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resonance-db
+          property: connectionString
+      - key: AI_ENGINE_URL
+        value: http://resonance-ai:5000
+      - key: ALLOWED_ORIGINS
+        value: https://resonance-backend.onrender.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AES_SECRET_KEY
+        sync: false # Must be 64 char hex set in dashboard
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

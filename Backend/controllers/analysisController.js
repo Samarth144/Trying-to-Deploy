@@ -3,6 +3,8 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 const { exec, spawn } = require('child_process'); // Import spawn
 const path = require('path');
+const fs = require('fs');
+const pdf = require('pdf-parse');
 
 const { generateMockAnalysis, simulateProcessing } = require('../utils/aiSimulator');
 const { decryptField } = require('../utils/encryption');
@@ -15,14 +17,26 @@ const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
 // @access  Private
 exports.proxyProcessVcf = async (req, res) => {
     try {
-        // Adjust file_path to be relative to what AI Engine sees
-        if (req.body.file_path) {
-            const filename = path.basename(req.body.file_path);
-            req.body.file_path = `/app/uploads/genomics/${filename}`;
+        if (!req.body.file_path) {
+            return res.status(400).json({ success: false, message: 'No VCF file specified' });
         }
-        const response = await axios.post(`${AI_ENGINE_URL}/process_vcf`, req.body);
+
+        const filename = path.basename(req.body.file_path);
+        const fullPath = path.join(__dirname, '../../uploads/genomics', filename);
+
+        if (!fs.existsSync(fullPath)) {
+            return res.status(404).json({ success: false, message: 'VCF file not found on server' });
+        }
+
+        const vcfText = fs.readFileSync(fullPath, 'utf8');
+
+        const response = await axios.post(`${AI_ENGINE_URL}/process_vcf_text`, {
+            vcf_text: vcfText
+        });
+        
         res.json(response.data);
     } catch (error) {
+        console.error('Proxy VCF Error:', error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -32,14 +46,28 @@ exports.proxyProcessVcf = async (req, res) => {
 // @access  Private
 exports.proxyProcessReport = async (req, res) => {
     try {
-        // Adjust file_path to be relative to what AI Engine sees
-        if (req.body.file_path) {
-            const filename = path.basename(req.body.file_path);
-            req.body.file_path = `/app/uploads/reports/${filename}`;
+        if (!req.body.file_path) {
+            return res.status(400).json({ success: false, message: 'No report file specified' });
         }
-        const response = await axios.post(`${AI_ENGINE_URL}/process_report_file`, req.body);
+
+        const filename = path.basename(req.body.file_path);
+        const fullPath = path.join(__dirname, '../../uploads/reports', filename);
+
+        if (!fs.existsSync(fullPath)) {
+            return res.status(404).json({ success: false, message: 'Report file not found on server' });
+        }
+
+        const dataBuffer = fs.readFileSync(fullPath);
+        const pdfData = await pdf(dataBuffer);
+        
+        const response = await axios.post(`${AI_ENGINE_URL}/process_report_text`, {
+            ...req.body,
+            text: pdfData.text
+        });
+        
         res.json(response.data);
     } catch (error) {
+        console.error('Proxy Report Error:', error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 };

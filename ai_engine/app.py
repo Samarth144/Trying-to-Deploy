@@ -17,7 +17,7 @@ else:
 
 from rule_engine import run_rules
 from llm.llm_chain import generate_treatment_plan, predict_outcomes, query_treatment_plan, format_evidence_llm, format_pathway_llm
-from utils.vcf_parser import parse_vcf
+from utils.vcf_parser import parse_vcf, parse_vcf_text
 from utils.formatter import format_multimodal_data # Import the new formatter
 from utils.outcome_engine import engine as outcome_engine # Import the new Outcome Engine
 from utils.report_generator import generate_cancer_report # Import the report generator
@@ -884,6 +884,20 @@ def process_vcf_route():
 
     file_path = data['file_path']
     result = parse_vcf(file_path)
+
+    if not result.get("success"):
+        return jsonify({"error": result.get("error", "VCF Parsing failed")}), 500
+
+    return jsonify(result)
+
+@app.route('/process_vcf_text', methods=['POST'])
+def process_vcf_text_route():
+    data = request.get_json()
+    if not data or 'vcf_text' not in data:
+        return jsonify({"error": "No VCF text provided"}), 400
+
+    vcf_text = data['vcf_text']
+    result = parse_vcf_text(vcf_text)
 
     if not result.get("success"):
         return jsonify({"error": result.get("error", "VCF Parsing failed")}), 500
