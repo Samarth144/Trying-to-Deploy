@@ -7,6 +7,8 @@ from trimesh.visual import TextureVisuals
 from trimesh.smoothing import filter_laplacian
 import os
 import sys
+import json
+from generate_margin_lines import generate_margin_lines
 
 # =====================================================
 # CONFIG
@@ -107,8 +109,21 @@ for name, geom in brain_scene.geometry.items():
         
     final_scene.add_geometry(geom, node_name=f"brain_{name}")
 
-# Rotate to horizontal
-rotation = trimesh.transformations.rotation_matrix(angle=-np.pi / 2, direction=[1, 0, 0])
+    rotation = trimesh.transformations.rotation_matrix(angle=-np.pi / 2, direction=[1, 0, 0])
+    
+    if tumor:
+        print("Generating mesh-based margin lines...")
+        # Lines are generated in the native Z-up medical space
+        lines, margin_data = generate_margin_lines(brain_scene, tumor, rotation)
+        
+        # Add to final_scene BEFORE applying rotation
+        for dir_name, line_mesh in lines.items():
+            final_scene.add_geometry(line_mesh, node_name=f"MarginLine_{dir_name}")
+            
+        with open("margin_distances.json", "w") as f:
+            json.dump(margin_data, f, indent=4)
+
+# Rotate to horizontal (applied to everything holistically including MarginLines)
 final_scene.apply_transform(rotation)
 
 # =====================================================
@@ -118,8 +133,9 @@ try:
     if tumor: tumor.export("tumor.glb")
     if edema: edema.export("edema.glb")
     brain_scene.export("brain.glb")
+            
     final_scene.export("tumor_with_brain.glb")
-    print("[SUCCESS] Precise multi-region model generated with named materials")
+    print("[SUCCESS] Precise multi-region model generated with named materials and measurement lines")
 except Exception as e:
     print(f"[ERROR] Export failed: {e}")
     sys.exit(1)

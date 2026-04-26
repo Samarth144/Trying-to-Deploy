@@ -5,6 +5,7 @@ const { exec, spawn } = require('child_process'); // Import spawn
 const path = require('path');
 
 const { generateMockAnalysis, simulateProcessing } = require('../utils/aiSimulator');
+const { decryptField } = require('../utils/encryption');
 
 // @desc    Get all analyses for a patient
 // @route   GET /api/analyses/patient/:patientId
@@ -126,7 +127,7 @@ exports.createAnalysis = async (req, res) => {
 exports.processAnalysis = async (req, res) => {
     try {
         let analysis = await Analysis.findByPk(req.params.id, {
-            include: [{ model: Patient }]
+            include: [{ model: Patient }]  // No attributes filter — needed for afterFind decryption hooks
         });
 
         if (!analysis) {
@@ -150,13 +151,24 @@ exports.processAnalysis = async (req, res) => {
         const resolvePath = (p) => p ? path.resolve(__dirname, '..', p) : null;
         
         // Check Analysis record first, then fallback to Patient record
-        const patientMri = analysis.Patient ? (analysis.Patient.mriPaths || {}) : {};
+        // NOTE: Sequelize afterFind hooks don't fire on included associations,
+        // so mriPaths arrives as a raw encrypted string — we decrypt it manually.
+        let rawMriPaths = analysis.Patient ? (analysis.Patient.mriPaths || {}) : {};
+        if (typeof rawMriPaths === 'string') {
+            rawMriPaths = decryptField(rawMriPaths, true) || {};
+        }
+        const patientMri = rawMriPaths;
+        console.log('[processAnalysis] Decrypted patientMri:', JSON.stringify(patientMri));
+        console.log('[processAnalysis] analysis.flairPath on analysis row:', analysis.flairPath);
+        
+        // Normalise: mriPaths keys may be stored with any casing, map them safely
+        const getPath = (obj, ...keys) => { for (const k of keys) { if (obj[k]) return obj[k]; } return null; };
         
         const mriPaths = {
-            t1: resolvePath(analysis.t1Path || patientMri.t1),
-            t1ce: resolvePath(analysis.t1cePath || patientMri.t1ce),
-            t2: resolvePath(analysis.t2Path || patientMri.t2),
-            flair: resolvePath(analysis.flairPath || patientMri.flair)
+            t1:   resolvePath(analysis.t1Path   || getPath(patientMri, 't1',   'T1')),
+            t1ce: resolvePath(analysis.t1cePath || getPath(patientMri, 't1ce', 'T1ce', 't1CE', 'T1CE')),
+            t2:   resolvePath(analysis.t2Path   || getPath(patientMri, 't2',   'T2')),
+            flair: resolvePath(analysis.flairPath || getPath(patientMri, 'flair', 'FLAIR'))
         };
 
         // Construct arguments
@@ -167,10 +179,11 @@ exports.processAnalysis = async (req, res) => {
         if (mriPaths.flair) scriptArgs.push('--flair', mriPaths.flair);
 
         // Validation: At least FLAIR is needed for the current model base, or just warn
+        console.log('[processAnalysis] Resolved MRI paths:', mriPaths);
         if (!mriPaths.flair && scriptArgs.length === 0) {
              // Fallback to test data if absolutely nothing is provided
              const defaultFlair = path.join(baseDir, 'Test_Data/BraTS20_Training_001_flair.nii');
-             console.log("No MRI provided, using default test data.");
+             console.log("No MRI provided (mriPaths was empty), using default test data.");
              scriptArgs.push('--flair', defaultFlair);
         }
 
@@ -244,7 +257,7 @@ exports.processAnalysis = async (req, res) => {
 
              // 3. Move files to unique folder (regardless of mesh success)
              const fs = require('fs');
-             const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb'];
+             const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb', 'margin_distances.json'];
              filesToMove.forEach(file => {
                  const oldPath = path.join(scriptDir, file); // Files are generated here
                  const newPath = path.join(resultsDir, file);
@@ -297,6 +310,17 @@ exports.processAnalysis = async (req, res) => {
                  results.segmentationConfidence = metrics.confidence;
                  results.intensityStats = metrics.intensity_stats;
                  results.textureFeatures = metrics.texture_features;
+             }
+             
+             // Extract margin distances if available
+             try {
+                 const marginPath = path.join(resultsDir, 'margin_distances.json');
+                 if (fs.existsSync(marginPath)) {
+                     const marginData = JSON.parse(fs.readFileSync(marginPath, 'utf8'));
+                     results.margin_distances = marginData;
+                 }
+             } catch (e) {
+                 console.error("Failed to append margin distances", e);
              }
              
              results.segmentationOutput = "tumor_mask.npy generated successfully";

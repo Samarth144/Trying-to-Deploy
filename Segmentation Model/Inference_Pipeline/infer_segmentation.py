@@ -9,11 +9,6 @@ from monai.inferers import sliding_window_inference
 import json
 import sys
 from scipy import stats
-
-# =====================================================
-# CONFIG
-# =====================================================
-import sys
 import os
 import argparse
 
@@ -127,6 +122,7 @@ try:
     tumor_mask_np = tumor_mask.cpu().numpy()[0]
     np.save("tumor_mask.npy", tumor_mask_np)
     print("[SUCCESS] tumor_mask.npy saved")
+        
 except Exception as e:
     print(f"[ERROR] Inference failed: {e}")
     sys.exit(1)

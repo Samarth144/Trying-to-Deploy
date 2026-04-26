@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Box, Grid, Typography, TextField, Button, IconButton, Switch, Tooltip, Chip, Slider, Divider, Modal
+  Box, Grid, Typography, TextField, Button, IconButton, Switch, Tooltip, Chip, Slider, Divider, Modal, CircularProgress
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -73,7 +73,7 @@ const MetricBox = ({ label, value, unit, highlight = false }) => (
   </Box>
 );
 
-const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView }) => {
+const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView, margins, status }) => {
   const viewerRef = useRef(null);
   const [isRotating, setIsRotating] = useState(true);
 
@@ -148,7 +148,17 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
     <Box className="viewport-3d" sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <div className="viewport-grid-bg"></div>
 
-      {modelUrl ? (
+      {(status === 'processing' || status === 'pending') ? (
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <CircularProgress sx={{ color: colors.cyan }} size={48} thickness={5} />
+          <Typography variant="h6" sx={{ color: colors.cyan, fontFamily: '"Rajdhani"', fontWeight: 700, letterSpacing: '1px' }}>
+            ⚙️ COMPILING 3D SURGICAL MODEL...
+          </Typography>
+          <Typography variant="caption" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"' }}>
+            Processing AI Segmentation and Margins (this may take ~45s)
+          </Typography>
+        </Box>
+      ) : modelUrl && status === 'completed' ? (
         <model-viewer
           key={`viewer-${realisticView}-${analysisId}`}
           ref={viewerRef}
@@ -162,6 +172,34 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
           onLoad={updateMaterials}
           style={{ width: '100%', flex: 1, background: 'transparent' }}
         >
+          {margins && layers.margins && Object.entries(margins).map(([dir, info]) => {
+             if (info.status === 'not_measurable' || !info.distance_mm) return null;
+             const distances = Object.values(margins).filter(m => m.status !== 'not_measurable').map(m => m.distance_mm);
+             const shortest = distances.length > 0 ? Math.min(...distances) : Infinity;
+             const isShortest = info.distance_mm === shortest;
+             
+             const mid = info.midpoint_glb;
+             const norm = info.direction_normal;
+             
+             // 3-letter clinical abbreviations — Brainlab/Medtronic standard
+             const abbr = { superior: 'SUP', inferior: 'INF', left: 'LFT', right: 'RGT', anterior: 'ANT', posterior: 'PST' };
+             const label = abbr[dir] || dir.slice(0, 3).toUpperCase();
+             
+             const extraClass = (isShortest && info.priority === 'critical') ? 'pulse-active' : '';
+             
+             return (
+               <button
+                 key={dir}
+                 slot={`hotspot-margin-${dir}`}
+                 data-position={`${mid[0]} ${mid[1]} ${mid[2]}`}
+                 data-normal={`${norm[0]} ${norm[1]} ${norm[2]}`}
+                 style={{ pointerEvents: 'none' }}
+                 className={`margin-label margin-label--${info.priority} ${extraClass}`}
+               >
+                 {label}&nbsp;&nbsp;{info.distance_mm.toFixed(1)}
+               </button>
+             );
+          })}
         </model-viewer>
       ) : (
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -233,7 +271,7 @@ const Tumor3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isPatient, isDoctor } = useAuth();
-  const [layers, setLayers] = useState({ tumor: true, edema: true, brain: true });
+  const [layers, setLayers] = useState({ tumor: true, edema: true, brain: true, margins: true });
   const [realisticView, setRealisticView] = useState(true);
   const [brainOpacity, setBrainOpacity] = useState(0.25);
   const [patientData, setPatientData] = useState(null);
@@ -244,6 +282,8 @@ const Tumor3DPage = () => {
   const [analysisMetrics, setAnalysisMetrics] = useState({
     volume: null, edema: null, necrosis: null, enhancing: null, location: 'SCANNING...', sphericity: null
   });
+  const [margins, setMargins] = useState(null);
+  const [analysisStatus, setAnalysisStatus] = useState(null);
 
   const toggleLayer = (key) => setLayers({ ...layers, [key]: !layers[key] });
 
@@ -252,6 +292,19 @@ const Tumor3DPage = () => {
     const pid = params.get('patientId');
     if (pid && pid !== 'null' && pid !== 'undefined') fetchPatientAndAnalysis(pid);
   }, [location.search]);
+
+  useEffect(() => {
+    let interval;
+    if (analysisStatus === 'processing' || analysisStatus === 'pending') {
+      interval = setInterval(() => {
+        const pid = new URLSearchParams(location.search).get('patientId');
+        if (pid) fetchPatientAndAnalysis(pid);
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [analysisStatus, location.search]);
 
   const fetchPatientAndAnalysis = async (pid) => {
     try {
@@ -264,6 +317,7 @@ const Tumor3DPage = () => {
       if (aRes.data.success && aRes.data.data.length > 0) {
         const latest = aRes.data.data[0];
         setAnalysisId(latest.id);
+        setAnalysisStatus(latest.status);
         const data = latest.data;
         const newMetrics = {};
         if (data.volumetricAnalysis?.tumorVolume) newMetrics.volume = data.volumetricAnalysis.tumorVolume;
@@ -273,6 +327,7 @@ const Tumor3DPage = () => {
         if (data.tumorLocation) newMetrics.location = data.tumorLocation;
         if (data.shapeFeatures?.sphericity) newMetrics.sphericity = data.shapeFeatures.sphericity;
         setAnalysisMetrics(prev => ({ ...prev, ...newMetrics }));
+        if (data.margin_distances) setMargins(data.margin_distances);
       }
     } catch (err) { console.error("Error fetching data:", err); }
   };
@@ -342,6 +397,7 @@ const Tumor3DPage = () => {
             <ControlToggle label="Show Tumor" active={layers.tumor} onToggle={() => toggleLayer('tumor')} disabled={realisticView} />
             <ControlToggle label="Show Edema" active={layers.edema} onToggle={() => toggleLayer('edema')} disabled={realisticView} />
             <ControlToggle label="Show Brain" active={layers.brain} onToggle={() => toggleLayer('brain')} disabled={realisticView} />
+            <ControlToggle label="Show Margins" active={layers.margins} onToggle={() => toggleLayer('margins')} disabled={realisticView} />
 
             <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
 
@@ -352,7 +408,7 @@ const Tumor3DPage = () => {
                 const nextMode = !realisticView;
                 setRealisticView(nextMode);
                 if (nextMode) {
-                  setLayers({ tumor: true, edema: true, brain: true });
+                  setLayers({ tumor: true, edema: true, brain: true, margins: true });
                 }
               }}
             />
@@ -367,7 +423,7 @@ const Tumor3DPage = () => {
 
         <ThreeDViewport
           volume={analysisMetrics.volume} location={analysisMetrics.location} analysisId={analysisId}
-          layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView}
+          layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView} margins={margins} status={analysisStatus}
         />
 
         <Box sx={{ width: '300px', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -378,6 +434,43 @@ const Tumor3DPage = () => {
             {analysisMetrics.enhancing && <MetricBox label="Active Core" value={analysisMetrics.enhancing} unit="cm³" highlight />}
             {analysisMetrics.necrosis && <MetricBox label="Necrosis" value={analysisMetrics.necrosis} unit="cm³" highlight />}
             {analysisMetrics.sphericity && <MetricBox label="Sphericity Index" value={analysisMetrics.sphericity} highlight />}
+          </Box>
+          
+          <Box className="glass-panel">
+            <Typography variant="overline" sx={{ color: colors.cyan, letterSpacing: '2px', fontWeight: 700, display: 'block', mb: 2 }}>SURGICAL MARGINS</Typography>
+            {margins ? (
+              <Box>
+                {Object.entries(margins).sort((a,b) => (a[1].distance_mm || Infinity) - (b[1].distance_mm || Infinity)).map(([dir, info]) => {
+                  if (info.status === 'margin_not_measurable') return null;
+                  const distances = Object.values(margins).filter(m => m.status !== 'margin_not_measurable').map(m => m.distance_mm);
+                  const isShortest = info.distance_mm === Math.min(...distances);
+                  let dotIcon = '🟢';
+                  if (info.distance_mm < 10) dotIcon = '🔴';
+                  else if (info.distance_mm < 25) dotIcon = '🟡';
+                  
+                  return (
+                    <Box key={dir} className="margin-item">
+                      <Typography className="sidebar-margin-label" sx={{ color: '#fff' }}>
+                        {dir}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ fontFamily: '"Space Grotesk"', fontSize: '14px', fontWeight: isShortest ? 700 : 400, color: isShortest ? colors.red : colors.text }}>
+                          {info.distance_mm.toFixed(1)} mm
+                        </Typography>
+                        <span title={info.distance_mm < 10 ? 'Critical' : info.distance_mm < 25 ? 'Caution' : 'Safe'}>{dotIcon}</span>
+                      </Box>
+                    </Box>
+                  );
+                })}
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: colors.muted, fontFamily: '"Space Grotesk"' }}>
+                  <span>🔴 &lt;10mm</span>
+                  <span>🟡 10-25mm</span>
+                  <span>🟢 &gt;25mm</span>
+                </Box>
+              </Box>
+            ) : (
+             <Typography variant="caption" sx={{ color: colors.muted, textAlign: 'center', display: 'block' }}>MARGIN DATA UNAVAILABLE</Typography>
+            )}
           </Box>
         </Box>
       </Box>
