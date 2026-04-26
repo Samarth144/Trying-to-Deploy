@@ -32,7 +32,7 @@ RUN cd Backend && npm install --production
 # 3. Copy Source Code
 COPY ai_engine/ ./ai_engine/
 COPY Backend/ ./Backend/
-COPY --from=frontend-builder /frontend/dist /Frontend/dist
+COPY --from=frontend-builder /frontend/dist ./Frontend/dist
 
 # 4. Environment Variables
 ENV NODE_ENV=production
