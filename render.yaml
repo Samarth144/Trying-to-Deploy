@@ -10,7 +10,7 @@ services:
   - type: pservice
     name: resonance-ai
     env: docker
-    region: ohio
+    region: singapore
     plan: starter # Python AI needs at least 'starter' RAM
     dockerContext: ./ai_engine
     dockerfilePath: Dockerfile
@@ -26,7 +26,7 @@ services:
   - type: web
     name: resonance-backend
     env: docker
-    region: ohio
+    region: singapore
     plan: starter
     dockerContext: .
     dockerfilePath: Backend/Dockerfile
