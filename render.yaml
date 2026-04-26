@@ -2,12 +2,12 @@ databases:
   - name: resonance-db
     databaseName: neuro_onco_ai
     user: postgres
-    plan: free # Change to 'starter' for production
+    plan: free
     region: singapore
 
 services:
-  # ─── AI Engine (Private Python Service) ─────────────────────────────────────
-  - type: pservice
+  # ─── AI Engine (Private Service) ──────────────────────────────────────────
+  - type: pserv
     name: resonance-ai
     env: docker
     region: singapore
@@ -18,9 +18,11 @@ services:
       - key: FLASK_ENV
         value: production
       - key: GROQ_API_KEY
-        sync: false # Must be set in Render Dashboard
+        sync: false # Set in Dashboard to avoid GitHub secret scanning
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
       - key: GEMINI_API_KEY
-        sync: false # Optional
+        sync: false
 
   # ─── Backend & Frontend (Public Web Service) ────────────────────────────────
   - type: web
@@ -44,9 +46,11 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://resonance-backend.onrender.com
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
+      - key: JWT_EXPIRE
+        value: 30d
       - key: AES_SECRET_KEY
-        sync: false # Must be 64 char hex set in dashboard
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: GEMINI_API_KEY
