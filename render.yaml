@@ -6,47 +6,29 @@ databases:
     region: singapore
 
 services:
-  # ─── AI Engine (Private Service) ──────────────────────────────────────────
-  - type: pserv
-    name: resonance-ai
-    env: docker
-    region: singapore
-    plan: free
-    dockerContext: ./ai_engine
-    dockerfilePath: Dockerfile
-    envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: LIGHT_MODE
-        value: "true"
-      - key: GROQ_API_KEY
-        sync: false 
-      - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
-      - key: GEMINI_API_KEY
-        sync: false
-
-  # ─── Backend & Frontend (Public Web Service) ────────────────────────────────
+  # ─── Unified Web Service (Backend + AI Engine + Frontend) ──────────────────
   - type: web
-    name: resonance-backend
+    name: resonance-app
     env: docker
     region: singapore
     plan: free
     dockerContext: .
-    dockerfilePath: Backend/Dockerfile
+    dockerfilePath: Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 8000
+      - key: LIGHT_MODE
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: resonance-db
           property: connectionString
       - key: AI_ENGINE_URL
-        value: http://resonance-ai:5000
+        value: http://127.0.0.1:5000
       - key: ALLOWED_ORIGINS
-        value: https://resonance-backend.onrender.com
+        value: https://resonance-app.onrender.com
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRE
@@ -55,5 +37,7 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
       - key: GEMINI_API_KEY
         sync: false
