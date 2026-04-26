@@ -87,6 +87,12 @@ if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
 }
 
+// Debug route logger
+app.use((req, res, next) => {
+    console.log(`[DEBUG] Incoming Request: ${req.method} ${req.path}`);
+    next();
+});
+
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname, '../Frontend/dist')));
 
@@ -103,7 +109,7 @@ app.use('/api/auth', require('./routes/auth'));
 
 // Protected data routes
 app.use('/api/patients', require('./routes/patients'));
-app.use('/api/analysis', require('./routes/analysis'));
+app.use('/api/analyses', require('./routes/analysis'));
 app.use('/api/treatments', require('./routes/treatments'));
 app.use('/api/outcomes', require('./routes/outcomes'));
 

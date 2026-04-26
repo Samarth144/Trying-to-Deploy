@@ -334,7 +334,7 @@ const PatientIntake = () => {
 
       if (uploadRes.data.filename) {
         // 2. Call AI Engine to extract data via Backend Proxy
-        const aiRes = await apiClient.post('/analysis/process-report', {
+        const aiRes = await apiClient.post('/analyses/process-report', {
           file_path: uploadRes.data.filename
         });
 
