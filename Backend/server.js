@@ -103,7 +103,7 @@ app.use('/api/auth', require('./routes/auth'));
 
 // Protected data routes
 app.use('/api/patients', require('./routes/patients'));
-app.use('/api/analyses', require('./routes/analysis'));
+app.use('/api/analysis', require('./routes/analysis'));
 app.use('/api/treatments', require('./routes/treatments'));
 app.use('/api/outcomes', require('./routes/outcomes'));
 
