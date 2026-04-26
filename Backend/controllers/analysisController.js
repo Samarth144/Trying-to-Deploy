@@ -7,6 +7,43 @@ const path = require('path');
 const { generateMockAnalysis, simulateProcessing } = require('../utils/aiSimulator');
 const { decryptField } = require('../utils/encryption');
 
+const axios = require('axios');
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+
+// @desc    Proxy VCF processing to AI Engine
+// @route   POST /api/analysis/process-vcf
+// @access  Private
+exports.proxyProcessVcf = async (req, res) => {
+    try {
+        // Adjust file_path to be relative to what AI Engine sees
+        if (req.body.file_path) {
+            const filename = path.basename(req.body.file_path);
+            req.body.file_path = `/app/uploads/genomics/${filename}`;
+        }
+        const response = await axios.post(`${AI_ENGINE_URL}/process_vcf`, req.body);
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Proxy Report processing to AI Engine
+// @route   POST /api/analysis/process-report
+// @access  Private
+exports.proxyProcessReport = async (req, res) => {
+    try {
+        // Adjust file_path to be relative to what AI Engine sees
+        if (req.body.file_path) {
+            const filename = path.basename(req.body.file_path);
+            req.body.file_path = `/app/uploads/reports/${filename}`;
+        }
+        const response = await axios.post(`${AI_ENGINE_URL}/process_report_file`, req.body);
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @desc    Get all analyses for a patient
 // @route   GET /api/analyses/patient/:patientId
 // @access  Private

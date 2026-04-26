@@ -4,6 +4,7 @@ const User = require('../models/User');
 const axios = require('axios');
 const { formatEvidenceWithGroq } = require('../utils/groqFormatter');
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
@@ -21,7 +22,7 @@ exports.generatePathway = async (req, res) => {
             });
         }
 
-        const aiEngineResponse = await axios.post('http://127.0.0.1:5000/generate_pathway', { plan });
+        const aiEngineResponse = await axios.post(`${AI_ENGINE_URL}/generate_pathway`, { plan });
         const pathway = aiEngineResponse.data.pathway;
 
         res.json({
@@ -59,7 +60,7 @@ exports.generateFormattedPlan = async (req, res) => {
                 // Still try to get experiences even for cached plans to show learning
                 let experiences = [];
                 try {
-                    const aiMemResponse = await axios.post('http://127.0.0.1:5000/recommend', req.body);
+                    const aiMemResponse = await axios.post(`${AI_ENGINE_URL}/recommend`, req.body);
                     experiences = aiMemResponse.data.experiences || [];
                 } catch (e) { console.log('Memory fetch failed for cache'); }
 
@@ -85,7 +86,7 @@ exports.generateFormattedPlan = async (req, res) => {
 
         // Step 1: Call the Python AI engine to get the raw treatment plan and evidence.
         console.log('Step 1: Calling Python AI engine at http://127.0.0.1:5000/recommend...');
-        const aiEngineResponse = await axios.post('http://127.0.0.1:5000/recommend', req.body);
+        const aiEngineResponse = await axios.post(`${AI_ENGINE_URL}/recommend`, req.body);
 
         const rawTreatmentData = aiEngineResponse.data;
         
@@ -102,7 +103,7 @@ exports.generateFormattedPlan = async (req, res) => {
         
         if (!formattedEvidence && evidence && evidence.length > 0) {
             console.log('No pre-formatted evidence found. Calling AI Engine for formatting...');
-            const formatResponse = await axios.post('http://127.0.0.1:5000/format_evidence', { evidence });
+            const formatResponse = await axios.post(`${AI_ENGINE_URL}/format_evidence`, { evidence });
             formattedEvidence = formatResponse.data.formattedText;
         } else if (!formattedEvidence) {
             formattedEvidence = "No specific evidence provided for formatting.";
@@ -263,7 +264,7 @@ exports.queryTreatmentPlan = async (req, res) => {
         };
 
         console.log(`Step: Querying AI engine for treatment ${treatmentId}...`);
-        const aiResponse = await axios.post('http://127.0.0.1:5000/chat', aiRequestData);
+        const aiResponse = await axios.post(`${AI_ENGINE_URL}/chat`, aiRequestData);
 
         res.json({
             success: true,
@@ -419,7 +420,7 @@ exports.approveTreatment = async (req, res) => {
                 console.log('[LEARNING] Detected Human Modification. Flagging as a supervised correction.');
             }
 
-            await axios.post('http://127.0.0.1:5000/learn_from_case', {
+            await axios.post(`${AI_ENGINE_URL}/learn_from_case`, {
                 patient_data: treatment.Patient ? treatment.Patient.toJSON() : {},
                 treatment_plan: {
                     primary_treatment: finalProtocol,

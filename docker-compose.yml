@@ -31,14 +31,16 @@ services:
       NODE_ENV: production
       PORT: 8000
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-neuro_onco_ai}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      AES_SECRET_KEY: ${AES_SECRET_KEY}
+      AES_SECRET_KEY: ${AES_SECRET_KEY:-64_char_hex_key_here}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
       AI_ENGINE_URL: http://ai_engine:5000
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8000}
     volumes:
       - uploads_data:/app/uploads
+      - ./reports:/app/reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,24 +57,14 @@ services:
     environment:
       FLASK_ENV: production
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      REPORTS_DIR: /app/uploads/reports
+      GENOMICS_DIR: /app/uploads/genomics
     volumes:
-      # Mount genomics VCF data and reports so the engine can read them
+      - uploads_data:/app/uploads
       - ./genomics:/app/genomics:ro
-      - ./reports:/app/reports:ro
-
-  # ─── Segmentation Model (batch pipeline — run on demand) ───────────────────
-  segmentation:
-    build:
-      context: "./Segmentation Model"
-      dockerfile: Dockerfile
-    container_name: resonance_segmentation
-    restart: "no"
-    volumes:
-      - segmentation_output:/app/AR_Assets/results
-    profiles:
-      - segmentation   # Only starts when you run: docker compose --profile segmentation up
+      - ./reports:/app/reports
 
 volumes:
   postgres_data:
   uploads_data:
-  segmentation_output:

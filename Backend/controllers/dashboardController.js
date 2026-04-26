@@ -5,6 +5,8 @@ const User = require('../models/User');
 const axios = require('axios');
 const { Op, fn, col } = require('sequelize');
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+
 // @desc    Get Institutional Knowledge Base stats from AI Engine
 // @route   GET /api/dashboard/institutional-knowledge
 // @access  Private (Clinician/Admin)
@@ -21,7 +23,7 @@ exports.getInstitutionalKnowledge = async (req, res) => {
         };
 
         try {
-            const aiResponse = await axios.get('http://127.0.0.1:5000/memory_stats');
+            const aiResponse = await axios.get(`${AI_ENGINE_URL}/memory_stats`);
             aiData = aiResponse.data;
         } catch (aiError) {
             console.warn('AI Memory Stats unavailable, using default:', aiError.message);

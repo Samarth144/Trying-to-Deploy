@@ -52,9 +52,8 @@ def generate_report_route():
         filename = f"{patient_name}_{timestamp}_Summary.pdf"
         
         # Ensure reports directory exists
-        # Use absolute path based on workspace root
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        reports_dir = os.path.join(base_dir, 'reports')
+        # Use environment variable or absolute path based on workspace root
+        reports_dir = os.getenv('REPORTS_DIR', os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'reports')))
         os.makedirs(reports_dir, exist_ok=True)
         
         output_path = os.path.join(reports_dir, filename)

@@ -8,6 +8,8 @@ const User = require('../models/User');
 const fs = require('fs');
 const path = require('path');
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
 // @desc    Generate and format outcomes using AI and Gemini
@@ -39,7 +41,7 @@ exports.generateFormattedOutcomes = async (req, res) => {
         }
 
         // Step 1: Call the Python AI engine to get the raw outcome predictions.
-        const aiEngineResponse = await axios.post('http://127.0.0.1:5000/predict_side_effects', req.body);
+        const aiEngineResponse = await axios.post(`${AI_ENGINE_URL}/predict_side_effects`, req.body);
         const rawOutcomeData = aiEngineResponse.data;
 
         // Extract side effects and patient data for formatting
@@ -401,7 +403,7 @@ exports.downloadReport = async (req, res) => {
         }
 
         // 3. Call Python AI Engine to generate report
-        const aiResponse = await axios.post('http://127.0.0.1:5000/generate_report', reportData);
+        const aiResponse = await axios.post(`${AI_ENGINE_URL}/generate_report`, reportData);
 
         if (aiResponse.data.success) {
             const filePath = aiResponse.data.path;

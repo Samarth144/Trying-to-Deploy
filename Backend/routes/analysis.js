@@ -6,6 +6,8 @@ const {
     createAnalysis,
     processAnalysis,
     updateAnalysis,
+    proxyProcessVcf,
+    proxyProcessReport,
     getSlice,
     get3DModel,
     getQRCode
@@ -14,6 +16,12 @@ const { protect } = require('../middleware/auth');
 
 router.route('/')
     .post(protect, createAnalysis);
+
+router.route('/process-vcf')
+    .post(protect, proxyProcessVcf);
+
+router.route('/process-report')
+    .post(protect, proxyProcessReport);
 
 router.route('/patient/:patientId')
     .get(protect, getPatientAnalyses);

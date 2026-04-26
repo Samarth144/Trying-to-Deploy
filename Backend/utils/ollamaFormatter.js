@@ -10,7 +10,8 @@ async function formatEvidenceWithOllama(evidenceList) {
         return "No evidence provided to format.";
     }
 
-    const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || 'http://127.0.0.1:5000/format';
+    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || `${AI_ENGINE_URL}/format`;
 
     const payload = {
         prompt: `
@@ -56,7 +57,8 @@ async function formatSideEffectsWithOllama(sideEffects, patientData) {
         return "No side effects provided to format.";
     }
 
-    const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || 'http://127.0.0.1:5000/format';
+    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || `${AI_ENGINE_URL}/format`;
 
     const payload = {
         prompt: `
@@ -99,7 +101,8 @@ async function formatSideEffectsWithOllama(sideEffects, patientData) {
 }
 
 async function generatePathwayWithOllama(plan) {
-    const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || 'http://127.0.0.1:5000/format';
+    const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:5000';
+const endpoint = process.env.OLLAMA_AI_ENGINE_ENDPOINT || `${AI_ENGINE_URL}/format`;
 
     const prompt = `
         You are a clinical oncology coordinator. Generate a structured treatment pathway (timeline) based on this treatment plan:

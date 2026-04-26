@@ -333,9 +333,9 @@ const PatientIntake = () => {
       });
 
       if (uploadRes.data.filename) {
-        // 2. Call AI Engine to extract data (Direct axios for external port 5000)
-        const aiRes = await axios.post('http://localhost:5000/process_report_file', {
-          file_path: `../Backend/uploads/reports/${uploadRes.data.filename}`
+        // 2. Call AI Engine to extract data via Backend Proxy
+        const aiRes = await apiClient.post('/analysis/process-report', {
+          file_path: uploadRes.data.filename
         });
 
         if (aiRes.data.extracted_data) {
@@ -399,9 +399,9 @@ const PatientIntake = () => {
       });
 
       if (uploadRes.data.filename) {
-        // 2. Call AI Engine to process VCF data (Direct axios for external port 5000)
-        const aiRes = await axios.post('http://localhost:5000/process_vcf', {
-          file_path: `../Backend/uploads/genomics/${uploadRes.data.filename}` // Adjust path as needed
+        // 2. Call AI Engine to process VCF data via Backend Proxy
+        const aiRes = await apiClient.post('/analysis/process-vcf', {
+          file_path: uploadRes.data.filename
         });
 
         if (aiRes.data.markers) {
