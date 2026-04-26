@@ -1,11 +1,11 @@
-services:
-  # ─── PostgreSQL Managed Database ────────────────────────────────────────────
-  - type: database
-    name: resonance-db
+databases:
+  - name: resonance-db
     databaseName: neuro_onco_ai
     user: postgres
     plan: free # Change to 'starter' for production
+    region: singapore
 
+services:
   # ─── AI Engine (Private Python Service) ─────────────────────────────────────
   - type: pservice
     name: resonance-ai
