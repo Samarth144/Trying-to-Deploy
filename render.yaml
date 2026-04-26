@@ -33,7 +33,7 @@ services:
         sync: false
       - key: JWT_EXPIRE
         value: 30d
-      - key: AES_SECRET_KEY
+      - key: AES_ENCRYPTION_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
