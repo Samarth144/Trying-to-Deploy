@@ -1,7 +1,7 @@
 databases:
   - name: resonance-db
-    databaseName: Resonance
-    user: postgres
+    databaseName: resonance
+    user: resonance_user
     plan: free
     region: singapore
 
