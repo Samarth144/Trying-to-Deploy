@@ -30,9 +30,15 @@ import spacy
 from datetime import datetime
 
 # Load scispaCy model for medical entity extraction
+LIGHT_MODE = os.getenv("LIGHT_MODE", "false").lower() == "true"
+
 try:
-    nlp = spacy.load("en_core_sci_sm")
-    print("[AI ENGINE] scispaCy model loaded successfully.")
+    if LIGHT_MODE:
+        print("[AI ENGINE] LIGHT_MODE active: Skipping heavy scispaCy model loading to save RAM.")
+        nlp = None
+    else:
+        nlp = spacy.load("en_core_sci_sm")
+        print("[AI ENGINE] scispaCy model loaded successfully.")
 except Exception as e:
     print(f"[AI ENGINE] Error loading scispaCy: {e}. Falling back to standard spaCy.")
     nlp = None
@@ -135,7 +141,7 @@ def clean_value(text):
 def parse_report_text(text):
     """
     Parses unstructured report text. 
-    Uses a hybrid of Regex and scispaCy for high-accuracy local extraction.
+    In LIGHT_MODE, it skips heavy NLP and uses high-performance Regex.
     """
     patient_data = {}
     
@@ -143,10 +149,10 @@ def parse_report_text(text):
     clean_text = re.sub(':', '', text)
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
-    # 2. NLP Analysis with scispaCy
-    doc = nlp(text) if nlp else None
+    # 2. NLP Analysis (Skip if LIGHT_MODE)
+    doc = nlp(text) if (nlp and not LIGHT_MODE) else None
     
-    # Extract entities for context
+    # Extract entities for context (Skip if LIGHT_MODE)
     entities = [ent.text.lower() for ent in doc.ents] if doc else []
 
     # 3. Cancer Type Detection

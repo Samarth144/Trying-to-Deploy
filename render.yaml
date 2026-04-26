@@ -11,14 +11,16 @@ services:
     name: resonance-ai
     env: docker
     region: singapore
-    plan: starter # Python AI needs at least 'starter' RAM
+    plan: free
     dockerContext: ./ai_engine
     dockerfilePath: Dockerfile
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: LIGHT_MODE
+        value: "true"
       - key: GROQ_API_KEY
-        sync: false # Set in Dashboard to avoid GitHub secret scanning
+        sync: false 
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
       - key: GEMINI_API_KEY
@@ -29,7 +31,7 @@ services:
     name: resonance-backend
     env: docker
     region: singapore
-    plan: starter
+    plan: free
     dockerContext: .
     dockerfilePath: Backend/Dockerfile
     envVars:
