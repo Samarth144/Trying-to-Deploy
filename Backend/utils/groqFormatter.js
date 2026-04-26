@@ -1,9 +1,15 @@
 const { OpenAI } = require("openai");
 
-const groq = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1"
-});
+// Initialize client only if key is present to prevent OpenAI library from throwing on startup
+const getGroqClient = () => {
+    const apiKey = process.env.GROQ_API_KEY || "placeholder_for_startup";
+    return new OpenAI({
+        apiKey: apiKey,
+        baseURL: "https://api.groq.com/openai/v1"
+    });
+};
+
+const groq = getGroqClient();
 
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
