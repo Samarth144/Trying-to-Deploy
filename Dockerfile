@@ -32,7 +32,8 @@ RUN cd Backend && npm install --production
 # 3. Copy Source Code
 COPY ai_engine/ ./ai_engine/
 COPY Backend/ ./Backend/
-COPY --from=frontend-builder /frontend/dist ./Frontend/dist
+# Explicitly copy to the exact path the backend is looking for
+COPY --from=frontend-builder /frontend/dist /app/Frontend/dist
 
 # 4. Environment Variables
 ENV NODE_ENV=production
@@ -44,6 +45,5 @@ ENV PORT=8000
 EXPOSE 8000
 
 # 5. Start Script
-# We use a shell command to start both processes
-# Python runs in the background (&), Node runs in the foreground
-CMD python3 ai_engine/app.py & cd Backend && node server.js
+# Added an 'ls' command to debug file locations in the logs if it fails
+CMD ls -R /app/Frontend && python3 ai_engine/app.py & cd Backend && node server.js
