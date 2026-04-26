@@ -1,6 +1,6 @@
 databases:
   - name: resonance-db
-    databaseName: neuro_onco_ai
+    databaseName: Resonance
     user: postgres
     plan: free
     region: singapore
